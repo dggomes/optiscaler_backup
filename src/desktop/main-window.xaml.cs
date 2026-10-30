@@ -280,6 +280,7 @@ public partial class MainWindow : Window
         dialog.Show();
         await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
         dialog.UpdateLayout();
+        if (dialog is NameDialog name) name.ValidateLayout();
         SaveImage((FrameworkElement)dialog.Content, file);
         dialog.Close();
     }

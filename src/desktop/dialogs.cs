@@ -40,13 +40,22 @@ internal abstract class ReviewDialog : Window
     }
     protected abstract void Approve();
     protected static DataGrid Table(bool editable = false) => new() { IsReadOnly = !editable, SelectionMode = DataGridSelectionMode.Single, CanUserAddRows = false, AutoGenerateColumns = false };
-    protected static DataGridTextColumn Column(string title, string field, double width, bool readOnly = true) => new()
+    protected static DataGridTextColumn Column(string title, string field, double width, bool readOnly = true)
     {
-        Header = title,
-        Binding = new Binding(field) { UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged },
-        Width = width < 0 ? new DataGridLength(1, DataGridLengthUnitType.Star) : new DataGridLength(width),
-        IsReadOnly = readOnly
-    };
+        var text = new Style(typeof(TextBlock));
+        text.Setters.Add(new Setter(ToolTipProperty, new Binding(field)));
+        text.Setters.Add(new Setter(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis));
+        text.Setters.Add(new Setter(VerticalAlignmentProperty, VerticalAlignment.Center));
+        text.Setters.Add(new Setter(MarginProperty, new Thickness(7, 0, 7, 0)));
+        return new()
+        {
+            Header = title,
+            Binding = new Binding(field) { UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged },
+            Width = width < 0 ? new DataGridLength(1, DataGridLengthUnitType.Star) : new DataGridLength(width),
+            IsReadOnly = readOnly,
+            ElementStyle = text
+        };
+    }
     protected static void Commit(DataGrid table) { table.CommitEdit(DataGridEditingUnit.Cell, true); table.CommitEdit(DataGridEditingUnit.Row, true); }
 }
 
@@ -59,7 +68,7 @@ internal sealed class NameDialog : ReviewDialog
     public bool Original => original.IsChecked == true;
     public NameDialog(Window owner, string title, string value = "", bool offerOriginal = false) : base(owner, title, "Use a name you will recognize when returning to this version.", "Save")
     {
-        Height = 370; MinHeight = 330;
+        Height = offerOriginal ? 460 : 370; MinHeight = offerOriginal ? 440 : 330;
         var panel = new StackPanel(); name = new() { Text = value, MaxLength = 160 };
         panel.Children.Add(new TextBlock { Text = "Name", Margin = new Thickness(0, 0, 0, 7) }); panel.Children.Add(name);
         if (offerOriginal) { panel.Children.Add(original); panel.Children.Add(clean); }
@@ -69,6 +78,12 @@ internal sealed class NameDialog : ReviewDialog
     {
         Value = Format.Label(name.Text);
         if (Original && clean.IsChecked != true) throw new InvalidOperationException("Confirm that the current files are clean before establishing Original.");
+    }
+
+    public void ValidateLayout()
+    {
+        if (clean.Parent != null && clean.TranslatePoint(new Point(0, clean.ActualHeight), Body).Y > Body.ActualHeight)
+            throw new InvalidOperationException("Original confirmation is clipped.");
     }
 }
 
