@@ -70,7 +70,7 @@ public static class UpdateHost
     {
         var job = Load(path);
         if (SafePaths.Hash(Environment.ProcessPath!) != job.ExpectedHash) throw new IOException("Updated executable hash does not match.");
-        if (!Version.TryParse(job.Version.TrimStart('v', 'V'), out var expected) || expected.ToString(3) != Releases.Current.ToString(3))
+        if (!Version.TryParse(job.Version.TrimStart('v', 'V'), out var expected) || !Releases.VersionEquals(expected, Releases.Current))
             throw new IOException("Updated executable version does not match its release tag.");
         // The helper holds session.lock through the probe. Read metadata without
         // opening a second session; this process must never mutate user data.

@@ -231,3 +231,9 @@ Before a release, verify on a real Windows gaming PC:
 - Verify a real release update, writable-location failure and failed-startup rollback using disposable app/data directories.
 
 Automated tests do not establish compatibility with every installed game or launcher version. Real Windows game installations have not been verified merely by building on macOS.
+
+## v0.3.0.1 startup hotfix
+
+This maintenance release retains the v0.3.0 interface and storage behavior. It automatically resets unlocked stale `session.lock` markers at startup, recovers a read-only app lock marker after acquiring exclusivity, and removes the marker when the session closes. A short retry allows a closing session to release its handle. Active sessions remain protected, including older versions; Windows errors identify the holder name/PID when available. No game/catalog ACLs are changed and no processes are terminated.
+
+Download the v0.3.0.1 UI manually from its release assets; the older UI does not gain the newer paired self-updater. The current feature release is v0.3.2. Do not delete a marker while an app/updater is running. If an actual owner or access error remains, close the named app/wait for its update or resolve data-folder access, then retry. A normal stale marker needs no manual deletion. Four-part maintenance versions are displayed and health-checked in full; this release does not replace existing tags or become the latest feature release.

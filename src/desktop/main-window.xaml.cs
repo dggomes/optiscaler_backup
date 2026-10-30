@@ -84,7 +84,7 @@ public partial class MainWindow : Window
             PageDescription.Text = page == Page.Library ? "Choose a game to manage its backups and packages." : page == Page.Settings ? "Storage and application preferences." : "Back up, change settings, and return to a working version.";
             DownloadThumbnailsToggle.IsChecked = store.Data.Settings.DownloadThumbnails;
             RetryThumbnailsButton.IsEnabled = store.Data.Settings.DownloadThumbnails;
-            BackupLocationText.Text = store.PayloadRoot; VersionText.Text = "OptiScaler Backup " + Releases.Current.ToString(3);
+            BackupLocationText.Text = store.PayloadRoot; VersionText.Text = "OptiScaler Backup " + Releases.DisplayVersion;
             if (selectedId != null) RefreshDetails();
         }
         finally { refreshing = false; UpdateActions(); }

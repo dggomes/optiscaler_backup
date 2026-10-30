@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0.1] — 2026-10-30
+
+- Hotfix for v0.3.0: recover unlocked stale/read-only session markers on startup, reset their bytes after exclusive acquisition and remove them on close.
+- Retry briefly for exiting sessions; preserve active/legacy locks and reject linked markers. Windows startup errors identify live holder names/PIDs when available; no process shutdown or ACL changes.
+- Display and verify four-part maintenance versions correctly. Existing storage, UI and feature behavior is retained.
+
+Validation of this maintenance build is pending.
+
 ## [0.3.0] — 2026-10-30
 
 ### Added

@@ -16,7 +16,7 @@ jobs:
       - name: Validate stable version tag
         shell: pwsh
         run: |
-          if ($env:GITHUB_REF_NAME -notmatch '^v(\d+\.\d+\.\d+)$') { throw 'Use a stable vMAJOR.MINOR.PATCH tag' }
+          if ($env:GITHUB_REF_NAME -notmatch '^v(\d+\.\d+\.\d+(?:\.\d+)?)$') { throw 'Use a stable vMAJOR.MINOR.PATCH[.HOTFIX] tag' }
           "RELEASE_VERSION=$($Matches[1])" | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Build and test
         run: npm run agent:pre-commit
@@ -58,7 +58,7 @@ jobs:
           export PATH="/usr/bin:$PATH"
           if PATH="/usr/bin:$PATH" gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             PATH="/usr/bin:$PATH" gh release upload "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 --clobber
-            PATH="/usr/bin:$PATH" gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
+            PATH="/usr/bin:$PATH" gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest=false
           else
-            PATH="/usr/bin:$PATH" gh release create "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 --verify-tag --generate-notes
+            PATH="/usr/bin:$PATH" gh release create "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 --verify-tag --generate-notes --latest=false
           fi

@@ -7,10 +7,18 @@ using System.Text.Json;
 using OptiScalerBackup.Core;
 using OptiScalerBackup.Windows;
 
+if (args.Length == 2 && args[0] == "--hold-session")
+{
+    using var session = new Store(args[1]); Console.WriteLine("READY"); Thread.Sleep(Timeout.Infinite); return 0;
+}
+
 if (args.SequenceEqual(new[] { "--live-thumbnails" })) { await ThumbnailTests.Live(); return 0; }
 
 var tests = new (string Name, Func<Task> Run)[]
 {
+    ("Session startup resets stale/read-only markers and releases failed startups", () => Sync(SessionLockTests.StaleMarkers)),
+    ("Session locks protect legacy owners and reject linked marker paths", () => Sync(SessionLockTests.LegacyAndLinks)),
+    ("Session lock recovers after a crashed process without bypassing live owners", () => Sync(SessionLockTests.CrashRecovery)),
     ("Snapshots restore exact managed state and preserve unrelated files", () => Sync(SnapshotRoundTrip)),
     ("Snapshot does not infer absence for files managed after capture", () => Sync(UnknownAbsence)),
     ("Snapshot folders contain readable read-only game and external files", () => Sync(SnapshotFolderLayout)),

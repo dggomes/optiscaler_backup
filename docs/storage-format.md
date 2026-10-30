@@ -116,3 +116,7 @@ The updater checks downloaded content against the configured GitHub release chec
 Failed replacement/health checks restore the previous executable. Interrupted updater state triggers recovery on the next launch. Diagnostics may be written as `.error` beside the update journal; successful health confirmation uses `.healthy`. The desktop interface opens release downloads manually; automatic updater behavior applies to the CLI.
 
 Application updates preserve user payloads, but a subsequent one-way catalog upgrade prevents older executables from opening the upgraded data. Release checksums detect accidental corruption; independent publisher signatures and hostile-local-user protection are not provided by this format.
+
+## Session lock startup recovery
+
+`session.lock` is an OS-held exclusive session handle, not an existence flag. Startup resets stale bytes only after acquiring that handle and uses delete-on-close. A read-only stale marker is recovered after an exclusive read handle proves no older session holds it; only this app-owned marker's ReadOnly attribute is cleared. Linked marker paths are rejected. Live sessions cannot be bypassed; Windows Restart Manager provides optional holder name/PID diagnostics without stopping processes. Failed startup releases its handle. Catalog/game data, recovery journals and ACLs are untouched by lock cleanup.
