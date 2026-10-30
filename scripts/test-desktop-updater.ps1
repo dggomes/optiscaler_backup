@@ -43,7 +43,8 @@ function Case([string]$name, [string]$mode) {
     if ($mode -ne 'ui-only') {
         Copy-Item $PreviousCli $cliDest
         $cliDownload = Join-Path $updates 'cli.exe'
-        if ($mode -eq 'bad-health') { Copy-Item $Desktop $cliDownload }
+        if ($mode -eq 'invalid-pe') { [IO.File]::WriteAllText($cliDownload,'Invalid companion executable fixture') }
+        elseif ($mode -eq 'bad-health') { Copy-Item $Desktop $cliDownload }
         else { Copy-Item $Cli $cliDownload }
         $companions += @{ Destination = $cliDest; Download = $cliDownload; ExpectedHash = (Hash $cliDownload); PreviousHash = (Hash $cliDest) }
     }
@@ -78,7 +79,7 @@ function Case([string]$name, [string]$mode) {
             if ($exitCode -eq 0 -or (Hash $ui) -ne (Hash $PreviousDesktop) -or (Hash $cliDest) -ne (Hash $PreviousCli)) { throw "$name changed a locked/running installation" }
             $null = Run-Helper $helper $jobPath $true
         }
-        $rollback = $mode -in @('bad-health','interrupted','pending-game','locked','running')
+        $rollback = $mode -in @('invalid-pe','bad-health','interrupted','pending-game','locked','running')
         if ($mode -eq 'restart') {
             if ($exitCode -ne 0 -or (Test-Path $jobPath)) { throw 'Restart did not archive the completed update' }
             $result = Get-Content (Join-Path $updates 'last-update.json') -Raw | ConvertFrom-Json
@@ -120,6 +121,7 @@ try {
     }
     Case 'ui-only-success' 'ui-only'
     Case 'paired-success' 'success'
+    Case 'paired-invalid-executable' 'invalid-pe'
     Case 'paired-failed-health' 'bad-health'
     Case 'paired-interrupted' 'interrupted'
     Case 'paired-pending-game' 'pending-game'
