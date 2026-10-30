@@ -8,6 +8,7 @@ namespace OptiScalerBackup.Desktop;
 
 public sealed class App : Application
 {
+    public App() => Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/optibackup-ui;component/theme.xaml", UriKind.Relative) });
     [STAThread]
     public static int Main(string[] args)
     {
@@ -22,30 +23,63 @@ public sealed class App : Application
                 else throw new ArgumentException("Supported options: --home <folder>, --smoke-test <screenshot.png>.");
             }
             RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
-            using var store = new Store(home);
-            var engine = new Engine(store, Detection.EnsureStopped);
-            engine.Recover();
-            var app = new App();
-            var window = new MainWindow(store, engine, screenshot != null);
-            app.DispatcherUnhandledException += (_, e) =>
+            var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            Store? store = null;
+            var startup = new Window
             {
-                e.Handled = true;
-                if (screenshot != null) File.WriteAllText(screenshot + ".error", e.Exception.ToString());
-                if (screenshot == null) MessageBox.Show(e.Exception.Message, "OptiScaler Backup", MessageBoxButton.OK, MessageBoxImage.Error);
-                app.Shutdown(1);
-            };
-            if (screenshot != null)
-            {
-                var captured = false;
-                window.ContentRendered += async (_, _) =>
+                Title = "OptiScaler Backup",
+                Width = 500,
+                Height = 240,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                Background = (System.Windows.Media.Brush)app.FindResource("Canvas"),
+                FontFamily = (System.Windows.Media.FontFamily)app.FindResource("BodyFont"),
+                Content = new System.Windows.Controls.StackPanel
                 {
-                    if (captured) return;
-                    captured = true;
-                    try { await window.SmokeTest(screenshot); app.Shutdown(0); }
-                    catch (Exception error) { File.WriteAllText(screenshot + ".error", error.ToString()); app.Shutdown(1); }
-                };
+                    Margin = new Thickness(30),
+                    Children =
+                    {
+                        new System.Windows.Controls.TextBlock { Text = "Opening your library", FontSize = 25 },
+                        new System.Windows.Controls.TextBlock { Text = "Checking storage and recovering any unfinished changes…", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 15, 0, 22) },
+                        new System.Windows.Controls.ProgressBar { IsIndeterminate = true, Height = 3 }
+                    }
+                }
+            };
+            WindowChrome.Apply(startup);
+            var opening = true;
+            startup.Closing += (_, e) => { if (opening) e.Cancel = true; };
+            void Fail(Exception error)
+            {
+                if (screenshot != null) File.WriteAllText(screenshot + ".error", error.ToString());
+                else MessageBox.Show(error.Message + "\nClose other app sessions and resolve pending recovery before retrying.", "Cannot open OptiScaler Backup", MessageBoxButton.OK, MessageBoxImage.Error);
+                opening = false; app.Shutdown(1);
             }
-            return app.Run(window);
+            app.DispatcherUnhandledException += (_, e) => { e.Handled = true; Fail(e.Exception); };
+            startup.Loaded += async (_, _) =>
+            {
+                try
+                {
+                    Engine? engine = null;
+                    await Task.Run(() => { store = new Store(home); engine = new Engine(store, Detection.EnsureStopped); engine.Recover(); });
+                    var window = new MainWindow(store!, engine!, screenshot != null);
+                    if (screenshot != null)
+                    {
+                        var captured = false;
+                        window.ContentRendered += async (_, _) =>
+                        {
+                            if (captured) return;
+                            captured = true;
+                            try { await window.SmokeTest(screenshot); app.Shutdown(0); }
+                            catch (Exception error) { Fail(error); }
+                        };
+                    }
+                    app.MainWindow = window; app.ShutdownMode = ShutdownMode.OnMainWindowClose;
+                    window.Show(); opening = false; startup.Close();
+                }
+                catch (Exception error) { Fail(error); }
+            };
+            try { return app.Run(startup); }
+            finally { store?.Dispose(); }
         }
         catch (Exception error)
         {

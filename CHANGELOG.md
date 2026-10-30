@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.0] — 2026-10-30
+
+### Added
+
+- Dark native WPF library cards with locally cached Steam covers or game executable icons. Artwork lookup makes no network requests.
+- Paginated library browsing, search across the full catalog, backup-status filters, and keyboard shortcuts for search, library navigation and scanning.
+- Dedicated game workspaces with back navigation, contextual actions and disabled file-changing actions when a game's drive is unavailable.
+- Guided file selection and user-confirmed Original backup setup, including already managed and newly detected files with single-click inclusion controls.
+- Recovery-backup filter and retained snapshot, package and installation selections after workspace refreshes.
+- Desktop storage settings to copy and verify saved payloads before switching backup locations, retaining the original copies.
+
+### Changed
+
+- Apply the dark theme across the main window and review dialogs, with visible errors, empty states and operation progress.
+- Show startup progress while opening storage and recovering unfinished operations in the background.
+- Desktop and CLI ship as version 0.3.0; the shared core and schema 2 storage format are unchanged.
+
+Release validation is pending. Real gaming-PC acceptance testing remains pending.
+
 ## [0.2.0] — 2026-10-30
 
 ### Added

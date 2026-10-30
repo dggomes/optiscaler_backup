@@ -12,33 +12,36 @@ namespace OptiScalerBackup.Desktop;
 internal abstract class ReviewDialog : Window
 {
     protected Grid Body { get; } = new();
-    private readonly TextBlock error = new() { Foreground = Brushes.Firebrick, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 10) };
+    protected readonly TextBlock Error = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 10) };
+    protected Button ApproveButton { get; private set; } = null!;
     protected ReviewDialog(Window owner, string title, string description, string approve)
     {
         Owner = owner; Title = title; Width = 880; Height = 600; MinWidth = 700; MinHeight = 470;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; FontFamily = owner.FontFamily; FontSize = 14;
-        Background = new SolidColorBrush(Color.FromRgb(244, 242, 237));
+        Background = (Brush)owner.FindResource("Canvas"); Foreground = (Brush)owner.FindResource("Ink");
+        Error.Foreground = (Brush)owner.FindResource("ErrorInk"); WindowChrome.Apply(this);
         Resources.MergedDictionaries.Add(owner.Resources);
         var root = new Grid();
         foreach (var height in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto }) root.RowDefinitions.Add(new() { Height = height });
         var header = new StackPanel { Margin = new Thickness(0, 0, 0, 20) };
         header.Children.Add(new TextBlock { Text = title, FontSize = 28, FontFamily = new FontFamily("Bahnschrift") });
-        header.Children.Add(new TextBlock { Text = description, TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DimGray, Margin = new Thickness(0, 9, 0, 0) });
+        header.Children.Add(new TextBlock { Text = description, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)owner.FindResource("Muted"), Margin = new Thickness(0, 9, 0, 0) });
         root.Children.Add(header); Grid.SetRow(Body, 1); root.Children.Add(Body);
-        Grid.SetRow(error, 2); root.Children.Add(error);
+        Grid.SetRow(Error, 2); root.Children.Add(Error);
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         var cancel = new Button { Content = "Cancel", IsCancel = true };
-        var accept = new Button { Content = approve, Style = (Style)owner.FindResource("Primary") };
+        var accept = ApproveButton = new Button { Content = approve, Style = (Style)owner.FindResource("Primary") };
         accept.Click += (_, _) =>
         {
             try { Approve(); DialogResult = true; }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
-            { error.Text = e.Message; }
+            { Error.Text = e.Message; }
         };
         footer.Children.Add(cancel); footer.Children.Add(accept); Grid.SetRow(footer, 3); root.Children.Add(footer);
         Content = new Border { Padding = new Thickness(26), Background = Background, Child = root };
     }
     protected abstract void Approve();
+    internal virtual void CheckInteraction() { }
     protected static DataGrid Table(bool editable = false) => new() { IsReadOnly = !editable, SelectionMode = DataGridSelectionMode.Single, CanUserAddRows = false, AutoGenerateColumns = false };
     protected static DataGridTextColumn Column(string title, string field, double width, bool readOnly = true)
     {
@@ -56,6 +59,15 @@ internal abstract class ReviewDialog : Window
             ElementStyle = text
         };
     }
+    protected static DataGridTemplateColumn IncludeColumn()
+    {
+        var box = new FrameworkElementFactory(typeof(CheckBox));
+        box.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, new Binding("Include") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
+        box.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        box.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        box.SetValue(System.Windows.Automation.AutomationProperties.NameProperty, "Include file");
+        return new DataGridTemplateColumn { Header = "Use", Width = 58, CellTemplate = new DataTemplate { VisualTree = box } };
+    }
     protected static void Commit(DataGrid table) { table.CommitEdit(DataGridEditingUnit.Cell, true); table.CommitEdit(DataGridEditingUnit.Row, true); }
 }
 
@@ -66,13 +78,22 @@ internal sealed class NameDialog : ReviewDialog
     private readonly CheckBox clean = new() { Content = "I confirm these files are clean / unmodified", Margin = new Thickness(0, 0, 0, 15) };
     public string Value { get; private set; } = "";
     public bool Original => original.IsChecked == true;
-    public NameDialog(Window owner, string title, string value = "", bool offerOriginal = false) : base(owner, title, "Use a name you will recognize when returning to this version.", "Save")
+    public NameDialog(Window owner, string title, string value = "", bool offerOriginal = false, bool preferOriginal = false) : base(owner, title, "Use a name you will recognize when returning to this version.", "Save")
     {
         Height = offerOriginal ? 460 : 370; MinHeight = offerOriginal ? 440 : 330;
         var panel = new StackPanel(); name = new() { Text = value, MaxLength = 160 };
         panel.Children.Add(new TextBlock { Text = "Name", Margin = new Thickness(0, 0, 0, 7) }); panel.Children.Add(name);
         if (offerOriginal) { panel.Children.Add(original); panel.Children.Add(clean); }
-        Body.Children.Add(panel); Loaded += (_, _) => { name.Focus(); name.SelectAll(); };
+        Body.Children.Add(panel);
+        original.IsChecked = preferOriginal && offerOriginal; clean.IsEnabled = Original;
+        void Validate()
+        {
+            clean.IsEnabled = Original;
+            ApproveButton.IsEnabled = !string.IsNullOrWhiteSpace(name.Text) && (!Original || clean.IsChecked == true);
+        }
+        name.TextChanged += (_, _) => Validate(); original.Checked += (_, _) => Validate(); original.Unchecked += (_, _) => Validate();
+        clean.Checked += (_, _) => Validate(); clean.Unchecked += (_, _) => Validate(); Validate();
+        Loaded += (_, _) => { name.Focus(); name.SelectAll(); };
     }
     protected override void Approve()
     {
@@ -80,6 +101,17 @@ internal sealed class NameDialog : ReviewDialog
         if (Original && clean.IsChecked != true) throw new InvalidOperationException("Confirm that the current files are clean before establishing Original.");
     }
 
+    internal override void CheckInteraction()
+    {
+        if (original.Parent == null) return;
+        name.Text = "Original"; original.IsChecked = true; clean.IsChecked = false;
+        if (ApproveButton.IsEnabled) throw new InvalidOperationException("Original must require clean confirmation.");
+        clean.IsChecked = true;
+        if (!ApproveButton.IsEnabled) throw new InvalidOperationException("Clean Original cannot be saved.");
+        name.Clear();
+        if (ApproveButton.IsEnabled) throw new InvalidOperationException("Blank backup name accepted.");
+        name.Text = "Original"; clean.IsChecked = false;
+    }
     public void ValidateLayout()
     {
         if (clean.Parent != null && clean.TranslatePoint(new Point(0, clean.ActualHeight), Body).Y > Body.ActualHeight)
@@ -94,6 +126,7 @@ internal sealed class SelectionRow
     public string Role { get; set; } = "";
     public string Evidence { get; set; } = "";
     public bool External { get; set; }
+    public Target? Existing { get; init; }
 }
 
 internal sealed class FileReviewDialog : ReviewDialog
@@ -104,9 +137,10 @@ internal sealed class FileReviewDialog : ReviewDialog
     private readonly Game game;
     public Game? Proposal { get; private set; }
     public FileReviewDialog(Window owner, Store store, Game game, IEnumerable<SelectionRow> candidates)
-        : base(owner, "Review managed files", "Standard files are selected together. Add other files if needed, then approve once. Review proxy identities and external paths before saving.", "Manage selected files")
+        : base(owner, "Review managed files", "Selected files are included in future backups. Uncheck files to stop tracking them; saved backups remain intact. Add other files, then approve once. Review proxy identities and external paths before saving.", "Manage selected files")
     {
-        this.store = store; this.game = game; rows = new(candidates);
+        this.store = store; this.game = game;
+        rows = new(game.Managed.Select(t => new SelectionRow { Path = t.Root == "game" ? t.Path : SafePaths.Resolve(game, t), Existing = t, Role = "Already managed", Evidence = "Included in future backups" }).Concat(candidates));
         Body.RowDefinitions.Add(new() { Height = GridLength.Auto }); Body.RowDefinitions.Add(new());
         var tools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 15) };
         var add = new Button { Content = "Add files…" }; add.Click += (_, _) =>
@@ -118,20 +152,43 @@ internal sealed class FileReviewDialog : ReviewDialog
         var addPath = new Button { Content = "Add relative path" }; addPath.Click += (_, _) =>
         {
             try { rows.Add(new() { Path = SafePaths.Relative(relative.Text.Trim()), Role = "Additional path", Evidence = "May be absent" }); relative.Clear(); }
-            catch (InvalidOperationException e) { MessageBox.Show(this, e.Message, "Invalid path"); }
+            catch (InvalidOperationException e) { Error.Text = e.Message; }
         };
         tools.Children.Add(add); tools.Children.Add(relative); tools.Children.Add(addPath); Body.Children.Add(tools);
         table.ItemsSource = rows;
-        table.Columns.Add(new DataGridCheckBoxColumn { Header = "Use", Binding = new Binding("Include") { UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged }, Width = 48 });
+        table.Columns.Add(IncludeColumn());
         table.Columns.Add(Column("File / path", "Path", -1)); table.Columns.Add(Column("Type", "Role", 130)); table.Columns.Add(Column("Evidence", "Evidence", 200));
         Grid.SetRow(table, 1); Body.Children.Add(table);
+    }
+    internal override void CheckInteraction()
+    {
+        if (rows.Count < 2) return;
+        table.UpdateLayout();
+        var first = (DataGridRow)table.ItemContainerGenerator.ContainerFromIndex(0);
+        CheckBox? FindCheck(DependencyObject parent)
+        {
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            { var child = VisualTreeHelper.GetChild(parent, i); if (child is CheckBox box) return box; if (FindCheck(child) is { } nested) return nested; }
+            return null;
+        }
+        var checkbox = FindCheck(first) ?? throw new InvalidOperationException("File selection checkbox unavailable.");
+        var peer = new System.Windows.Automation.Peers.ToggleButtonAutomationPeer(checkbox);
+        var toggle = (System.Windows.Automation.Provider.IToggleProvider)peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Toggle);
+        toggle.Toggle();
+        if (rows[0].Include) throw new InvalidOperationException("Single-click file selection failed.");
+        Approve();
+        if (Proposal!.Managed.Any(t => t == rows[0].Existing)) throw new InvalidOperationException("Untracking did not update proposed files.");
+        if (Proposal.Snapshots.Count != game.Snapshots.Count) throw new InvalidOperationException("Untracking changed saved snapshots.");
+        toggle.Toggle();
     }
     protected override void Approve()
     {
         Commit(table);
-        var selected = rows.Where(r => r.Include).Select(r => new FileRequest(r.Path, r.External)).ToList();
-        if (selected.Count == 0) throw new InvalidOperationException("Select at least one file or cancel.");
-        Proposal = ManagedFiles.Prepare(game, selected, store.Home, store.PayloadRoot);
+        var included = rows.Where(r => r.Include).ToList();
+        var selected = included.Where(r => r.Existing == null).Select(r => new FileRequest(r.Path, r.External)).ToList();
+        if (included.Count == 0) throw new InvalidOperationException("Select at least one file or cancel.");
+        var next = Format.Clone(game); next.Managed = included.Where(r => r.Existing != null).Select(r => r.Existing!).ToList();
+        Proposal = ManagedFiles.Prepare(next, selected, store.Home, store.PayloadRoot);
     }
 }
 
@@ -181,7 +238,7 @@ internal sealed class PackageReviewDialog : ReviewDialog
         var left = new StackPanel { Margin = new Thickness(0, 0, 15, 0) }; left.Children.Add(new TextBlock { Text = "Package name" }); left.Children.Add(name);
         var right = new StackPanel(); right.Children.Add(new TextBlock { Text = "Version label" }); right.Children.Add(version); Grid.SetColumn(right, 1);
         labels.Children.Add(left); labels.Children.Add(right); Body.Children.Add(labels);
-        table.ItemsSource = rows; table.Columns.Add(new DataGridCheckBoxColumn { Header = "Use", Binding = new Binding("Include") { UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged }, Width = 48 });
+        table.ItemsSource = rows; table.Columns.Add(IncludeColumn());
         table.Columns.Add(Column("Archive entry", "Entry", 210)); table.Columns.Add(Column("Destination — edit here", "Destination", -1, false)); table.Columns.Add(Column("Existing matches", "Candidates", 180));
         Grid.SetRow(table, 1); Body.Children.Add(table);
     }
@@ -192,4 +249,14 @@ internal sealed class PackageReviewDialog : ReviewDialog
         if (Mappings.Values.All(v => v == null)) throw new InvalidOperationException("Include at least one entry.");
         SafePaths.DistinctDestinations(Mappings.Values.Where(v => v != null).Select(v => Path.Combine(Path.GetTempPath(), v!)));
     }
+}
+
+internal sealed class ConfirmationDialog : ReviewDialog
+{
+    public ConfirmationDialog(Window owner, string title, string description, string detail, string approve) : base(owner, title, description, approve)
+    {
+        Height = 470;
+        Body.Children.Add(new ScrollViewer { Content = new TextBlock { Text = detail, TextWrapping = TextWrapping.Wrap, LineHeight = 23 } });
+    }
+    protected override void Approve() { }
 }

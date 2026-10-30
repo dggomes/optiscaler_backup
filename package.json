@@ -1,7 +1,7 @@
 {
   "name": "optiscaler-backup-workflows",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Repository guardrails only; the application is built with .NET, not Node.js.",
   "scripts": {
     "agent:preflight": "node scripts/agent-workflow.mjs preflight",
