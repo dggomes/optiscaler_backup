@@ -78,8 +78,9 @@
                     </Grid>
                     <DockPanel Grid.Row="2" Margin="0,7,0,0"><StackPanel x:Name="Pagination" Orientation="Horizontal" DockPanel.Dock="Right"><Button x:Name="PreviousPage" Style="{StaticResource IconButton}" Content="&#xE76B;" Click="PreviousPage_Click" ToolTip="Previous page" AutomationProperties.Name="Previous page"/><TextBlock x:Name="PageCount" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="5,0,15,0"/><Button x:Name="NextPage" Style="{StaticResource IconButton}" Content="&#xE76C;" Click="NextPage_Click" ToolTip="Next page" AutomationProperties.Name="Next page" Margin="0"/></StackPanel><TextBlock x:Name="LibraryCount" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/></DockPanel>
                 </Grid>
-                <Grid x:Name="GamePanel" Visibility="Collapsed">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <ScrollViewer x:Name="GameScroll" Visibility="{Binding Visibility,ElementName=GamePanel}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" SizeChanged="GameLayout_Changed">
+                <Grid x:Name="GamePanel" Visibility="Collapsed" SizeChanged="GameLayout_Changed">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Button Content="←  Game library" Style="{StaticResource Quiet}" Click="Library_Click" HorizontalAlignment="Left" Margin="-12,-4,0,10"/>
                     <Grid Grid.Row="1" Margin="0,0,0,19"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel><TextBlock x:Name="SourceText" Foreground="{DynamicResource Muted}" FontSize="12"/><TextBlock x:Name="GameTitle" FontFamily="{DynamicResource DisplayFont}" FontSize="30" TextWrapping="Wrap" Margin="0,6,14,8"/><TextBlock x:Name="PathText" Foreground="{DynamicResource Muted}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/><TextBlock x:Name="AvailabilityText" Foreground="{DynamicResource ErrorInk}" TextWrapping="Wrap" Margin="0,6,0,0"/><TextBlock x:Name="SummaryText" Foreground="{DynamicResource Muted}" Margin="0,10,0,0"/></StackPanel>
@@ -88,7 +89,7 @@
                     <Border x:Name="SetupGuide" Grid.Row="2" Background="{DynamicResource AccentSurface}" CornerRadius="8" Padding="17,14" Margin="0,0,0,18">
                         <DockPanel><Button x:Name="SetupButton" DockPanel.Dock="Right" Content="Choose files" Click="Setup_Click" Margin="20,0,0,0"/><StackPanel><TextBlock x:Name="SetupTitle" FontWeight="SemiBold"/><TextBlock x:Name="SetupDescription" Foreground="#B9C8B3" TextWrapping="Wrap" Margin="0,5,0,0"/></StackPanel></DockPanel>
                     </Border>
-                    <TabControl x:Name="GameTabs" Grid.Row="3">
+                    <TabControl x:Name="GameTabs" Grid.Row="3" Height="400">
                         <TabItem Header="Backups"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <DockPanel Margin="0,0,0,13"><CheckBox x:Name="ShowRecovery" Content="Show recovery backups" DockPanel.Dock="Right" VerticalAlignment="Center" Checked="RecoveryFilter_Changed" Unchecked="RecoveryFilter_Changed"/><WrapPanel><Button x:Name="RestoreButton" Content="Restore…" Click="Restore_Click"/><Button x:Name="ShowFilesButton" Content="Show files" Click="ShowFiles_Click"/><Button x:Name="RenameBackupButton" Content="Rename" Style="{StaticResource Quiet}" Click="RenameSnapshot_Click"/></WrapPanel></DockPanel>
                             <Border Grid.Row="1" Background="{DynamicResource Surface}" CornerRadius="9"><Grid><DataGrid x:Name="SnapshotList" SelectionChanged="ActionSelection_Changed" SelectionMode="Single" AutomationProperties.Name="Saved backups"><DataGrid.Columns><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Backup" Binding="{Binding Name}" Width="*"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Type" Binding="{Binding Kind}" Width="105"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Files" Binding="{Binding FileCount}" Width="60"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Size" Binding="{Binding Size}" Width="90"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Saved" Binding="{Binding Created}" Width="150"/></DataGrid.Columns></DataGrid>
@@ -104,6 +105,7 @@
                         </Grid></TabItem>
                     </TabControl>
                 </Grid>
+                </ScrollViewer>
                 <ScrollViewer x:Name="SettingsPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto"><StackPanel MaxWidth="820" HorizontalAlignment="Left">
                     <Button Content="←  Game library" Style="{StaticResource Quiet}" Click="Library_Click" HorizontalAlignment="Left" Margin="-12,-4,0,14"/>
                     <TextBlock Text="Settings" FontFamily="{DynamicResource DisplayFont}" FontSize="30"/>

@@ -46,7 +46,7 @@ The setup guide offers file selection first, then **Save Original…** when no O
 
 **Packages** reviews ZIP destinations/exclusions, imports named versions, previews installs and rolls back active installations. Package payloads remain deduplicated blobs; their pre-install/recovery backups are browsable snapshot folders. Overlapping layers require explicit approval and reverse rollback order; externally edited files require explicit override after recovery capture. The engine preserves these rules across both interfaces.
 
-Operations run off the UI thread, one at a time. Active work temporarily disables competing actions and prevents closing the window; errors are shown inline and can be dismissed. Startup recovery runs before normal work.
+The game workspace scrolls in compact windows to keep package tables and their actions reachable. Operations run off the UI thread, one at a time. Active work temporarily disables competing actions and prevents closing the window; errors are shown inline and can be dismissed. Startup recovery runs before normal work.
 
 ## Settings and storage
 

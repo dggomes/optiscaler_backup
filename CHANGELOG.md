@@ -13,7 +13,7 @@
 
 ### Changed
 
-- Apply the dark theme across the main window and review dialogs, with visible errors, empty states and operation progress.
+- Apply the dark theme across the main window and review dialogs, with visible errors, empty states and operation progress. Compact game workspaces scroll to preserve readable tables.
 - Show startup progress while opening storage and recovering unfinished operations in the background.
 - Desktop and CLI ship as version 0.3.0; the shared core and schema 2 storage format are unchanged.
 

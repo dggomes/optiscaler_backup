@@ -123,6 +123,14 @@ public partial class MainWindow : Window
     }
     private static string BlockerNames(Game game, IEnumerable<string> ids) => string.Join(", ", ids.Select(id => PackageLabel(game, game.Installations.Single(i => i.Id == id))));
 
+    private void GameLayout_Changed(object sender, SizeChangedEventArgs e)
+    {
+        if (GameTabs == null || GameScroll.ActualHeight <= 0 || GamePanel.Visibility != Visibility.Visible) return;
+        var header = GamePanel.RowDefinitions.Take(3).Sum(row => row.ActualHeight);
+        var height = Math.Max(400, GameScroll.ActualHeight - header);
+        if (Math.Abs(GameTabs.Height - height) > 0.5) GameTabs.Height = height;
+    }
+
     private void UpdateActions()
     {
         if (!IsInitialized || SaveBackupButton == null) return;
@@ -149,7 +157,7 @@ public partial class MainWindow : Window
     private async Task OpenSelectedGame()
     {
         if (busy || GameList.SelectedItem is not GameRow row) return;
-        selectedId = row.Id; page = Page.Game; GameTabs.SelectedIndex = 0; Refresh();
+        selectedId = row.Id; page = Page.Game; GameTabs.SelectedIndex = 0; GameScroll.ScrollToTop(); Refresh();
         if (!smoke) await Guard("Find settings", async () =>
         {
             if (!Directory.Exists(Selected.Directory)) return;
@@ -240,7 +248,11 @@ public partial class MainWindow : Window
         GameTabs.SelectedIndex = 1; await Capture(screenshot + ".managed.png");
         GameTabs.SelectedIndex = 2; await Capture(screenshot + ".packages.png");
         var width = Width; var height = Height; Width = MinWidth; Height = MinHeight;
-        await Capture(screenshot + ".compact.png"); Width = width; Height = height;
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        GameScroll.ScrollToBottom();
+        await Capture(screenshot + ".compact.png");
+        if (PackageList.ActualHeight < 92 || InstallationList.ActualHeight < 92) throw new InvalidOperationException("Compact package tables clip rows.");
+        Width = width; Height = height; GameScroll.ScrollToTop();
         page = Page.Settings; Refresh(); await Capture(screenshot + ".settings.png");
         page = Page.Game; Refresh(); GameTabs.SelectedIndex = 0;
         var game = Selected;
