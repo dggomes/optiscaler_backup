@@ -8,7 +8,7 @@ This is an independent backup utility, not an official OptiScaler installer. It 
 
 Download `optibackup-win-x64.exe` from this repository's [GitHub Releases](https://github.com/dggomes/optiscaler_backup/releases), optionally rename it to `optibackup.exe`, and place it in a writable folder outside your game directories. Published builds include the .NET runtime. Release assets become available when a maintainer publishes a version through the release workflow.
 
-Run from PowerShell:
+The examples below assume the executable is named `optibackup.exe`. Run from PowerShell:
 
 ```powershell
 .\optibackup.exe
@@ -27,9 +27,9 @@ Backups default to `%LOCALAPPDATA%\OptiScalerBackup\backups`. Keep that folder a
 5. Create more named snapshots after changing settings or libraries. Rename labels at any time.
 6. Preview and confirm restoration. A recovery snapshot is saved before changing files.
 
-Restores reproduce the selected state for tracked paths, including removing managed files absent from that version. **Currently managed paths missing from the selected snapshot are also treated as absent.** Review removals carefully after expanding your managed-file selection. Unrelated files remain untouched. Removing a path from the current managed list does not remove it from historical snapshots.
+Restores reproduce the selected state for tracked paths, including removing managed files absent from that version. Paths added to management after capture are preserved: missing metadata does not establish historical absence. Preview lists these unrecorded paths. Unrelated files remain untouched. Removing a path from the current managed list does not remove it from historical snapshots.
 
-Close the game before capture, installation or restoration. Access restrictions are reported; the app does not change permissions. Restoring older DLLs can undo launcher updates, so inspect replacements after a game update.
+Close the game before capture, installation or restoration. Access restrictions are reported; the app does not change permissions. Disconnected or unavailable approved settings roots stop the operation rather than being recorded as absent files. Restoring older DLLs can undo launcher updates, so inspect replacements after a game update.
 
 ### Commands
 
@@ -131,7 +131,7 @@ Interactive startup checks for a newer stable release at most once daily and ask
 
 Changing the backup directory copies and verifies payloads before switching the catalog; old copies are retained. Keep backup storage separate from game directories. `--home <folder>` selects a different catalog/data home, useful for isolated use or testing.
 
-The updater downloads this repository's stable Windows executable and SHA-256 checksum over HTTPS, waits for the app to exit, replaces the executable, checks startup health and restarts it. It retains `optibackup.exe.previous` for failed-update rollback. Self-installation requires the published Windows x64 executable named `optibackup.exe` or `optibackup-win-x64.exe` in a writable location. It does not elevate permissions or update while game-file recovery is pending.
+The updater downloads this repository's stable Windows executable and SHA-256 checksum over HTTPS, waits for the app to exit, replaces the executable, checks startup health and restarts it. It retains a `.previous` copy beside the executable for failed-update rollback. Self-installation requires the published Windows x64 executable named `optibackup.exe` or `optibackup-win-x64.exe` in a writable location. It does not elevate permissions or update while game-file recovery is pending.
 
 Checksums detect corruption; they are published beside the executable and are not independent signatures or protection against a compromised release account. There is no automatic mod download or system-driver installation.
 

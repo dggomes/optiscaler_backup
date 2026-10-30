@@ -14,7 +14,7 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         {
             var path = SafePaths.Resolve(game, target);
             if (Directory.Exists(path)) throw new IOException($"Expected file, found directory: {path}");
-            var hash = File.Exists(path) ? store.Capture(path) : null;
+            var hash = SafePaths.FileExists(path) ? store.Capture(path) : null;
             snapshot.Files.Add(new(target, hash, hash == null ? 0 : new FileInfo(store.Blob(hash)).Length));
         }
         return snapshot;
@@ -36,10 +36,10 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
 
     public List<FileState> SnapshotFiles(Game game, Snapshot snapshot)
     {
-        var states = snapshot.Files.ToDictionary(f => f.Target.Key);
-        foreach (var target in game.Managed)
-            states.TryAdd(target.Key, new(target, null, 0));
-        return states.Values.ToList();
+        if (!game.Snapshots.Any(s => s.Id == snapshot.Id)) throw new InvalidOperationException("Snapshot does not belong to this game.");
+        // Missing metadata is unknown, not evidence of historical absence.
+        // Only an explicit null hash authorizes deleting a tracked file.
+        return snapshot.Files.ToList();
     }
 
     public List<Change> Preview(Game game, IEnumerable<FileState> desired)
@@ -49,7 +49,7 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         return desired.Select(f =>
         {
             var path = SafePaths.Resolve(game, f.Target);
-            var current = File.Exists(path) ? SafePaths.Hash(path) : null;
+            var current = SafePaths.FileExists(path) ? SafePaths.Hash(path) : null;
             return new Change(current == f.Hash ? "unchanged" : f.Hash == null ? "remove" : current == null ? "add" : "replace",
                 f.Target, current, f.Hash);
         }).ToList();
@@ -97,7 +97,7 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
     public List<Target> Modified(Game game, Installation installation) => CurrentInstallation(game, installation.Id).Installed.Where(f =>
     {
         var path = SafePaths.Resolve(game, f.Target);
-        return !File.Exists(path) || SafePaths.Hash(path) != f.Hash;
+        return !SafePaths.FileExists(path) || SafePaths.Hash(path) != f.Hash;
     }).Select(f => f.Target).ToList();
 
     public void Rollback(Game game, Installation installation, bool overrideEdits)
@@ -128,7 +128,14 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         RequireAvailable(journal.BeforeGame);
         ensureStopped?.Invoke(journal.BeforeGame);
         Validate(journal.BeforeGame, journal.BeforeFiles.Files);
-        WriteFiles(journal.BeforeGame, journal.BeforeFiles.Files, false);
+        if (journal.Id.Length != 32 || journal.Id.Any(c => !char.IsAsciiHexDigit(c))) throw new IOException("Invalid transaction ID.");
+        foreach (var state in journal.BeforeFiles.Files)
+        {
+            var temp = SafePaths.Resolve(journal.BeforeGame, state.Target) + ".optibackup-" + journal.Id + ".tmp";
+            SafePaths.NoLinks(temp);
+            if (File.Exists(temp)) File.Delete(temp);
+        }
+        WriteFiles(journal.BeforeGame, journal.BeforeFiles.Files, false, journal.Id);
         store.Put(journal.BeforeGame);
         File.Delete(store.JournalPath);
         return true;
@@ -151,7 +158,7 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         {
             var drift = Preview(game, before.Files).Any(c => c.Action != "unchanged");
             if (drift) throw new IOException("Game files changed while preparing the operation. Retry with the game closed.");
-            WriteFiles(game, desired, true);
+            WriteFiles(game, desired, true, journal.Id);
             store.Put(next);
             File.Delete(store.JournalPath);
         }
@@ -163,19 +170,20 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         }
     }
 
-    private void WriteFiles(Game game, IEnumerable<FileState> desired, bool inject)
+    private void WriteFiles(Game game, IEnumerable<FileState> desired, bool inject, string transactionId)
     {
         var count = 0;
         foreach (var state in desired)
         {
             var path = SafePaths.Resolve(game, state.Target);
-            if (state.Hash == null) { if (File.Exists(path)) File.Delete(path); }
+            if (state.Hash == null) { if (SafePaths.FileExists(path)) File.Delete(path); }
             else
             {
                 store.Verify(state.Hash);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 SafePaths.NoLinks(path);
-                var temp = path + ".optibackup-" + Format.Id() + ".tmp";
+                var temp = path + ".optibackup-" + transactionId + ".tmp";
+                SafePaths.NoLinks(temp);
                 try
                 {
                     using (var input = File.OpenRead(store.Blob(state.Hash)))
@@ -217,7 +225,7 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
             for (var parent = Path.GetDirectoryName(path); parent != null && !Directory.Exists(parent); parent = Path.GetDirectoryName(parent))
                 if (File.Exists(parent)) throw new IOException($"Destination parent is a file: {parent}");
             if (Directory.Exists(path)) throw new IOException($"Destination is a directory: {path}");
-            if (!File.Exists(path)) continue;
+            if (!SafePaths.FileExists(path)) continue;
             using var check = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         }
     }

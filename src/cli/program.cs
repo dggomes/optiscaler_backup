@@ -244,7 +244,13 @@ internal sealed partial class Application(Store store, Engine engine)
         var snapshot = FindSnapshot(game, args.At(2));
         var desired = engine.SnapshotFiles(game, snapshot);
         var changes = engine.Preview(game, desired);
-        Output(new { Changes = changes, Blockers = engine.ActiveOverlaps(game, desired.Select(f => f.Target)), Warning = "Tracked files missing from this version will be removed. Changed binaries may be from a newer game update." }, args);
+        Output(new
+        {
+            Changes = changes,
+            Blockers = engine.ActiveOverlaps(game, desired.Select(f => f.Target)),
+            UnrecordedManagedFiles = game.Managed.Where(t => !snapshot.Files.Any(f => f.Target.Key == t.Key)),
+            Warning = "Only recorded paths change; explicit recorded absence removes a file. Changed binaries may be from a newer game update."
+        }, args);
         if (args.Has("dry-run")) return;
         Confirm("Restore exact managed state and create recovery snapshot", args);
         engine.Restore(game, snapshot);
@@ -355,11 +361,12 @@ internal sealed partial class Application(Store store, Engine engine)
 
     private async Task Update(bool install, Arguments args, bool startup = false)
     {
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         var releases = new Releases(client);
         store.Data.Settings.LastUpdateCheck = DateTimeOffset.UtcNow;
         store.Save();
-        var release = await releases.Check();
+        using var checkTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var release = await releases.Check(checkTimeout.Token);
         if (release == null) { if (!startup) Output(new { Current = Releases.Current.ToString(3), Update = "No newer stable release" }, args); return; }
         Output(release, args);
         if (startup)
@@ -371,7 +378,6 @@ internal sealed partial class Application(Store store, Engine engine)
         else Confirm("Download and install application update", args);
         if (!OperatingSystem.IsWindows()) throw new InvalidOperationException("Install updates on Windows using the published executable.");
         var directory = Path.Combine(store.Home, "updates", Format.Id());
-        client.Timeout = TimeSpan.FromMinutes(10);
         var downloaded = await releases.Download(release, directory);
         UpdateHost.Stage(store, downloaded, release);
         exitForUpdate = true;

@@ -10,8 +10,10 @@ using OptiScalerBackup.Windows;
 var tests = new (string Name, Func<Task> Run)[]
 {
     ("Snapshots restore exact managed state and preserve unrelated files", () => Sync(SnapshotRoundTrip)),
+    ("Snapshot does not infer absence for files managed after capture", () => Sync(UnknownAbsence)),
     ("Original requires clean confirmation and cannot be replaced", () => Sync(OriginalGuard)),
     ("External settings restore under explicitly approved roots", () => Sync(ExternalSettings)),
+    ("Unavailable external root is never captured as file absence", () => Sync(ExternalUnavailable)),
     ("Corrupt payload is rejected before any mutation", () => Sync(Corruption)),
     ("Injected write failure rolls back files and package metadata", () => Sync(TransactionalFailure)),
     ("Interrupted operation recovers after reopening store", () => Sync(InterruptedRecovery)),
@@ -92,6 +94,15 @@ static void SnapshotRoundTrip()
     Equal("tuned", f.Read("OptiScaler.ini")); Equal("mod", f.Read("dxgi.dll"));
     Equal(2, f.Current.Snapshots.Count(s => s.Recovery));
 }
+static void UnknownAbsence()
+{
+    using var f = new Fixture(); f.Write("a.ini", "original"); f.Game.Managed = [T("a.ini")];
+    var snapshot = f.Engine.CreateSnapshot(f.Game, "Original", true, true);
+    f.Write("a.ini", "changed"); f.Write("later.dll", "existing game library");
+    f.Current.Managed.Add(T("later.dll")); f.Store.Save();
+    f.Engine.Restore(f.Current, snapshot);
+    Equal("original", f.Read("a.ini")); Equal("existing game library", f.Read("later.dll"));
+}
 static void OriginalGuard()
 {
     using var f = new Fixture(); f.Game.Managed = [T("dxgi.dll")];
@@ -109,6 +120,15 @@ static void ExternalSettings()
     File.WriteAllText(System.IO.Path.Combine(external, "GameUserSettings.ini"), "quality=2");
     f.Engine.Restore(f.Current, snapshot);
     Equal("quality=1", File.ReadAllText(System.IO.Path.Combine(external, "GameUserSettings.ini")));
+}
+static void ExternalUnavailable()
+{
+    using var f = new Fixture(); var external = System.IO.Path.Combine(f.Root, "external");
+    Directory.CreateDirectory(external); File.WriteAllText(System.IO.Path.Combine(external, "graphics.ini"), "preserve");
+    f.Game.ExternalRoots["external"] = external; f.Game.Managed = [new("external", "graphics.ini")];
+    Directory.Move(external, external + "-offline");
+    Throws(() => f.Engine.CreateSnapshot(f.Game, "Unavailable", false, false), "unavailable");
+    Equal(0, f.Current.Snapshots.Count); Equal("preserve", File.ReadAllText(System.IO.Path.Combine(external + "-offline", "graphics.ini")));
 }
 static void Corruption()
 {
@@ -130,11 +150,14 @@ static void InterruptedRecovery()
 {
     using var f = new Fixture(); f.Write("a.dll", "old");
     var before = f.Engine.Capture(f.Game, [T("a.dll"), T("b.dll")], "Recovery", true);
-    Store.Atomic(f.Store.JournalPath, new Journal { BeforeGame = Format.Clone(f.Game), BeforeFiles = before });
+    var journal = new Journal { BeforeGame = Format.Clone(f.Game), BeforeFiles = before };
+    Store.Atomic(f.Store.JournalPath, journal);
+    var interruptedTemp = f.Path("a.dll") + ".optibackup-" + journal.Id + ".tmp";
+    File.WriteAllText(interruptedTemp, "partially staged");
     f.Write("a.dll", "partially installed"); f.Write("b.dll", "new");
     f.Store.Dispose();
     using var reopened = new Store(f.Home);
-    True(new Engine(reopened).Recover()); Equal("old", f.Read("a.dll")); True(!File.Exists(f.Path("b.dll"))); True(!File.Exists(reopened.JournalPath));
+    True(new Engine(reopened).Recover()); Equal("old", f.Read("a.dll")); True(!File.Exists(f.Path("b.dll"))); True(!File.Exists(reopened.JournalPath)); True(!File.Exists(interruptedTemp));
 }
 static void Layers()
 {

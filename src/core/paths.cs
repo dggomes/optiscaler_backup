@@ -40,9 +40,22 @@ public static class SafePaths
     {
         for (var p = Path.GetFullPath(path); p != null; p = Path.GetDirectoryName(p))
         {
-            if ((File.Exists(p) || Directory.Exists(p)) && (File.GetAttributes(p) & FileAttributes.ReparsePoint) != 0)
-                throw new IOException($"Linked/junction path is not allowed: {p}");
+            try
+            {
+                if ((File.GetAttributes(p) & FileAttributes.ReparsePoint) != 0)
+                    throw new IOException($"Linked/junction path is not allowed: {p}");
+            }
+            catch (FileNotFoundException) { /* An absent component is allowed. */ }
+            catch (DirectoryNotFoundException) { /* Parent availability is checked separately. */ }
         }
+    }
+
+    public static bool FileExists(string path)
+    {
+        try { return (File.GetAttributes(path) & FileAttributes.Directory) == 0; }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
+        // Access-denied and I/O errors must never be recorded as absence.
     }
 
     public static string Resolve(Game game, Target target)
@@ -50,6 +63,7 @@ public static class SafePaths
         var root = target.Root == "game" ? game.Directory :
             game.ExternalRoots.TryGetValue(target.Root, out var approved) ? approved :
             throw new InvalidOperationException($"Unapproved file root: {target.Root}");
+        if (!Directory.Exists(root)) throw new DirectoryNotFoundException($"Approved root is unavailable or inaccessible: {root}");
         var path = Path.GetFullPath(Path.Combine(root, Relative(target.Path).Replace('/', Path.DirectorySeparatorChar)));
         if (!Within(root, path)) throw new IOException("Destination escapes approved root.");
         NoLinks(path);

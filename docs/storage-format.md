@@ -28,11 +28,11 @@ A target has `Root` and `Path`:
 
 - `Root: "game"` resolves beneath the game's installation directory.
 - Another root ID resolves beneath that game's explicitly approved `ExternalRoots` directory.
-- `Path` is a validated relative file path. Rooted paths, traversal, Windows device names and unsafe characters are rejected. Linked/junction ancestors are rejected at resolution.
+- `Path` is a validated relative file path. Rooted paths, traversal, Windows device names and unsafe characters are rejected. Linked/junction ancestors are rejected at resolution. An unavailable approved root stops resolution; access failures are never captured as historical absence.
 
 A file state records `Target`, `Hash` and `Size`. `Hash: null` means the file must be absent, with size zero. Otherwise the hash is lowercase SHA-256 and locates the blob. Payload content is verified before use. Bytes are immutable; labels may be renamed. Filesystem timestamps, permissions and alternate data streams are not versioned.
 
-A snapshot records its ID/name/time, Original/recovery flags and file states. Original is a one-time user-confirmed designation, not proof of a pristine installation. Restoration uses the snapshot's targets plus currently managed targets missing from it; the latter are treated as absent and appear as removals in preview. Historical targets remain part of their snapshot even after removal from the current managed selection.
+A snapshot records its ID/name/time, Original/recovery flags and file states. Original is a one-time user-confirmed designation, not proof of a pristine installation. Restoration uses only the snapshot's recorded targets. A null hash explicitly authorizes removal; paths added to management after capture are preserved and listed as unrecorded in preview. Historical targets remain part of their snapshot even after removal from the current managed selection.
 
 A package records its ID/name/version/time, source ZIP hash, reviewed source-entry-to-destination mappings, excluded entries and destination file states. The original ZIP is not required for reinstallation: extracted payloads are retained as blobs. Excluded ZIP entries are not installed. Imports do not change game files.
 
@@ -47,6 +47,7 @@ The engine checks destinations, process/file access, payload integrity and avail
 `pending.json` contains:
 
 - `SchemaVersion`.
+- `Id`: transaction identifier used to clean interrupted per-file staging.
 - `BeforeGame`: catalog state to restore on failure.
 - `BeforeFiles`: immutable pre-operation file states, including absence.
 - `Desired`: intended file states for the attempted operation.
@@ -61,6 +62,6 @@ Do not delete the journal to bypass recovery. Reconnect the game/backup drive, c
 
 Update state is separate from game-file transactions. `updates/pending.json` records schema, data home, executable/download paths, old/new hashes, release version, parent process ID and status. The helper waits for the parent to exit, acquires the same session lock and refuses a pending game transaction.
 
-The updater verifies downloaded content against the checksum from the configured GitHub release, retains the previous executable at `optibackup.exe.previous`, stages replacement beside the executable and performs a startup health probe. Failed replacement/health checks restore the previous executable. Interrupted update state triggers recovery on the next launch. Diagnostic details may be written beside the update journal as `.error`; successful health confirmation uses `.healthy`.
+The updater verifies downloaded content against the checksum from the configured GitHub release, retains the previous executable beside it with a `.previous` suffix, stages replacement beside the executable and performs a startup health probe. The helper retains the session lock while the probe validates executable identity/version and reads catalog metadata without acquiring a second lock. Failed replacement/health checks restore the previous executable. Interrupted update state triggers recovery on the next launch. Diagnostic details may be written beside the update journal as `.error`; successful health confirmation uses `.healthy`.
 
 Catalogs and backup payloads are preserved during executable updates. Release checksums provide integrity against accidental corruption; independent publisher signatures and hostile-local-user protection are not provided by this format.

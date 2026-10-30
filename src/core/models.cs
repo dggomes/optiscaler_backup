@@ -77,6 +77,7 @@ public sealed class Catalog
 public sealed class Journal
 {
     public int SchemaVersion { get; set; } = Format.Version;
+    public string Id { get; set; } = Format.Id();
     public Game BeforeGame { get; set; } = new();
     public Snapshot BeforeFiles { get; set; } = new();
     public List<FileState> Desired { get; set; } = [];
