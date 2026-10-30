@@ -17,7 +17,7 @@
 - Automatically convert schema 1 snapshots on upgrade, retaining `catalog.v1.json` and the original blobs. Full snapshot copies use more disk space than deduplicated blobs.
 - Snapshot renaming moves its folder and updates references with crash recovery. Changing the backup directory preserves full snapshot copies and their read-only attributes.
 
-Prior Windows desktop startup/render smoke testing passed. Schema 2 validation and real gaming-PC acceptance testing remain pending.
+Automated Windows/Linux checks cover schema migration, CLI workflows, native updater recovery and desktop startup/rendering, including an actual 0.1.1 → 0.2.0 executable and catalog upgrade. Real gaming-PC acceptance testing remains pending.
 
 ## [0.1.1] — 2026-10-30
 
