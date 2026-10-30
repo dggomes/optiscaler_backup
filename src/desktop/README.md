@@ -2,7 +2,7 @@
 
 WPF frontend for the shared .NET 10 core. It uses the same catalog and backups as the CLI, including package installation history. Only one session may open a data home at a time; close the CLI before starting the desktop app.
 
-Version 0.3.0 introduces a dark card library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick). Both CLI and desktop executables remain on schema 2; this release does not add another storage migration.
+Version 0.3.0 introduces a dark card library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick). The backup format remains schema 2, with an optional catalog preference for thumbnail downloads; this release does not add another storage migration.
 
 ## Build and run
 
@@ -28,7 +28,9 @@ dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x6
 
 The library displays 24 cards per page. Search matches partial game names across every page, ignoring case. Use **All games**, **With backups** or **No backups** filters; clear search or reset the filters from an empty result. Click a card or select it and press Enter to open the game.
 
-Artwork is optional and local-only: cached Steam covers, then an executable icon, then name initials. Missing artwork never blocks access, and the app does not fetch images from the network. Unavailable game drives are labeled on cards and the game page.
+At startup, the app scans installed launchers and queues thumbnail checks for the entire catalog, across all pages and filters. Background downloads use installed Steam manifest IDs where available; otherwise the game's title is sent to Steam's public storefront search. Only a unique exact normalized-title match is accepted. The provider is free/keyless and uses HTTPS Steam CDN JPEG images, but its search endpoint is undocumented and may change or rate-limit requests.
+
+Not every game exists on Steam or has a unique match/image. Downloaded thumbnails fall back to locally cached Steam covers, executable icons or name initials. Offline/service/rate-limit failures pause only the download queue; games and local backup operations remain usable. Unavailable game drives are labeled on cards and the game page.
 
 - `Ctrl+F`: return to the library and focus search.
 - `Escape`: return from game/settings to the library.
@@ -52,6 +54,8 @@ The game workspace scrolls in compact windows to keep package tables and their a
 
 **Settings → Change location…** confirms the source/destination, copies and verifies snapshots/blobs, then switches the configured location. Old copies are retained. Other controls open the backup folder, copy its path or open app data. **Open backups** from a game opens that game's snapshot collection when it exists; elsewhere it opens the configured payload folder.
 
+**Download thumbnails automatically** is enabled by default; switch it off to stop future matching/download requests. Existing cached images remain available. **Refresh thumbnails** retries every catalog entry. Images live under `<home>/thumbnails`, separate from backup storage, with 4 MiB JPEG limits and SHA-256 verification. Successful entries are rechecked after 30 days; no-match entries after seven days. Moving backup storage does not relocate this cache. The same preference is available through CLI `config set download-thumbnails false` after closing the desktop app.
+
 **Release downloads** opens the repository's releases page; the desktop app does not automatically check for or install updates. Use CLI `config` for other advanced settings, such as archive limits, after closing the desktop app.
 
 First opening a schema 1 catalog converts existing snapshots to schema 2 folders, retaining `catalog.v1.json` and old blobs. Allow extra disk space for full copies. Schema 2 is not readable by v0.1.x. See [storage and recovery](../../docs/storage-format.md) before moving or restoring the data home.
@@ -61,8 +65,11 @@ First opening a schema 1 catalog converts existing snapshots to schema 2 folders
 - `app.cs`: WPF entrypoint, catalog lock, startup recovery and startup/render smoke entrypoint.
 - `main-window.xaml` / `.xaml.cs`: library/search, pagination, selection state and serialized background work.
 - `navigation.cs` / `game-actions.cs`: library/settings navigation, storage relocation and game backup/package workflows.
-- `game-artwork.cs`: local Steam cover and executable-icon loading with initials supplied by the library.
+- `game-artwork.cs`: cached-download/local Steam cover and executable-icon loading with initials supplied by the library.
+- `thumbnails.cs`: catalog-wide background download scheduling, progress, retry and opt-out; matching/cache integrity belongs to the Windows adapter service.
 - `theme.xaml` / `window-chrome.cs`: shared dark controls and native window styling.
 - `dialogs.cs`: managed-file batch selection, labels/Original confirmation, ZIP mappings and change/conflict previews.
 
 Backup formats, path validation and recoverable mutations belong to the core. Windows discovery/process checks belong to the Windows adapter project. The desktop layer invokes those services and collects explicit user choices.
+
+The optional `dotnet run --project tests -- --live-thumbnails` check contacts the real provider to validate matching/download/cache behavior on supported .NET hosts. It does not exercise WPF rendering or verify real Windows game installations.

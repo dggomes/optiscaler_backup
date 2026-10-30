@@ -32,6 +32,10 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     def catalog():
         return json.loads((home / 'catalog.json').read_text(encoding='utf-8'))
 
+    run('config', 'set', 'download-thumbnails', 'false')
+    assert catalog()['Settings']['DownloadThumbnails'] is False
+    run('config', 'set', 'download-thumbnails', 'invalid', succeeds=False)
+    assert catalog()['Settings']['DownloadThumbnails'] is False
     run('games', 'add', 'CLI fixture', str(game))
     gid = catalog()['Games'][0]['Id']
     run('files', 'add', gid, 'OptiScaler.ini')

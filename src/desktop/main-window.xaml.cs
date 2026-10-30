@@ -38,8 +38,10 @@ public partial class MainWindow : Window
     public MainWindow(Store store, Engine engine, bool smoke)
     {
         this.store = store; this.engine = engine; this.smoke = smoke;
+        thumbnails = new Thumbnails(thumbnailHttp, store.Home);
         InitializeComponent(); WindowChrome.Apply(this); Refresh();
-        if (!smoke) Loaded += async (_, _) => await LoadArtwork();
+        if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); };
+        Closed += (_, _) => { thumbnailCancellation?.Cancel(); thumbnailHttp.Dispose(); };
     }
 
     private static string CountLabel(int count, string label) => $"{count} {label}{(count == 1 ? "" : "s")}";
@@ -80,6 +82,8 @@ public partial class MainWindow : Window
             LibraryNav.IsChecked = page != Page.Settings; SettingsNav.IsChecked = page == Page.Settings;
             TopActions.Visibility = page == Page.Library ? Visibility.Visible : Visibility.Collapsed;
             PageDescription.Text = page == Page.Library ? "Choose a game to manage its backups and packages." : page == Page.Settings ? "Storage and application preferences." : "Back up, change settings, and return to a working version.";
+            DownloadThumbnailsToggle.IsChecked = store.Data.Settings.DownloadThumbnails;
+            RetryThumbnailsButton.IsEnabled = store.Data.Settings.DownloadThumbnails;
             BackupLocationText.Text = store.PayloadRoot; VersionText.Text = "OptiScaler Backup " + Releases.Current.ToString(3);
             if (selectedId != null) RefreshDetails();
         }
@@ -169,10 +173,10 @@ public partial class MainWindow : Window
     }
     private async Task LoadArtwork()
     {
-        if (smoke || page != Page.Library) return;
+        if (smoke || busy || page != Page.Library) return;
         var generation = ++artworkGeneration;
         var missing = GameList.Items.Cast<GameRow>().Where(r => !artwork.ContainsKey(r.Id)).Select(r => Format.Clone(store.Game(r.Id))).ToList();
-        var loaded = await Task.Run(() => missing.Select(g => (g.Id, Image: GameArtwork.Load(g))).ToList());
+        var loaded = await Task.Run(() => missing.Select(g => (g.Id, Image: GameArtwork.Load(g, CachedThumbnail(g)))).ToList());
         if (generation != artworkGeneration) return;
         if (artwork.Count > 120) artwork.Clear();
         foreach (var pair in loaded) artwork[pair.Id] = pair.Image;
@@ -185,7 +189,7 @@ public partial class MainWindow : Window
         if (busy) throw new InvalidOperationException("Wait for the current operation to finish.");
         busy = true; SetWorkspaceEnabled(false); BusyProgress.Visibility = Visibility.Visible; StatusText.Text = operation + "…";
         try { var value = await Task.Run(action); StatusText.Text = operation + " complete."; return value; }
-        finally { busy = false; SetWorkspaceEnabled(true); BusyProgress.Visibility = Visibility.Collapsed; Refresh(); }
+        finally { busy = false; SetWorkspaceEnabled(true); BusyProgress.Visibility = Visibility.Collapsed; Refresh(); if (thumbnailsPending) StartThumbnails(thumbnailsPendingRetry); }
     }
     private Task Work(string operation, Action action) => Work(operation, () => { action(); return true; });
     private async Task Guard(string operation, Func<Task> action)
@@ -254,6 +258,11 @@ public partial class MainWindow : Window
         if (PackageList.ActualHeight < 92 || InstallationList.ActualHeight < 92) throw new InvalidOperationException("Compact package tables clip rows.");
         Width = width; Height = height; GameScroll.ScrollToTop();
         page = Page.Settings; Refresh(); await Capture(screenshot + ".settings.png");
+        DownloadThumbnailsToggle.IsChecked = false; await SaveThumbnailPreference();
+        if (Store.Read<Catalog>(Path.Combine(store.Home, "catalog.json")).Settings.DownloadThumbnails || RetryThumbnailsButton.IsEnabled) throw new InvalidOperationException("Thumbnail opt-out did not persist.");
+        DownloadThumbnailsToggle.IsChecked = true; await SaveThumbnailPreference();
+        if (!Store.Read<Catalog>(Path.Combine(store.Home, "catalog.json")).Settings.DownloadThumbnails || !RetryThumbnailsButton.IsEnabled) throw new InvalidOperationException("Thumbnail opt-in did not persist.");
+        SettingsPanel.ScrollToBottom(); await Capture(screenshot + ".settings-bottom.png");
         page = Page.Game; Refresh(); GameTabs.SelectedIndex = 0;
         var game = Selected;
         await RenderDialog(new FileReviewDialog(this, store, game, FindFiles(game)), screenshot + ".files.png");

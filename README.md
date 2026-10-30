@@ -13,7 +13,7 @@ Download either interface from this repository's [GitHub Releases](https://githu
 
 Each is a self-contained executable with the .NET runtime included and an accompanying `.exe.sha256` checksum. Place it in a writable folder outside your game directories. Both interfaces are included from v0.2.0 onward.
 
-Version 0.3.0 refreshes the desktop library and workflows; both executables use the same unchanged schema 2 storage format.
+Version 0.3.0 refreshes the desktop library and workflows, including automatic thumbnails. The backup format remains schema 2; the catalog adds an optional thumbnail-download preference.
 
 The examples below assume the executable is named `optibackup.exe`. Run from PowerShell:
 
@@ -42,7 +42,8 @@ Opening v1 data automatically upgrades it to schema 2, retaining `catalog.v1.jso
 
 Run `optibackup-ui-win-x64.exe` on Windows, or build it using the [desktop instructions](src/desktop/README.md). It opens the same library, snapshots and package history as the CLI. Close other sessions using that catalog before launching it.
 
-- Browse a dark card library, 24 games per page, with **All games**, **With backups** and **No backups** filters. Search partial names across the whole library, ignoring case; clear search or reset filters when needed. Artwork uses locally cached Steam covers or executable icons, with name initials when neither is available. The library never downloads artwork.
+- Browse a dark card library, 24 games per page, with **All games**, **With backups** and **No backups** filters. Search partial names across the whole library, ignoring case; clear search or reset filters when needed. Startup scans installed launchers, then checks the entire catalog for thumbnails in the background, including games outside the current page/filter.
+- Thumbnail downloads are free and need no API key. Installed Steam IDs are preferred; other titles use a unique exact normalized-name match through Steam's public storefront search, then a Steam CDN image. Some titles have no unique Steam match or available image: locally cached covers, executable icons or initials remain the fallback.
 - Use `Ctrl+F` for library search, `Escape` to return from a game/settings page, and `F5` to scan installed launchers. Scan custom folders or add games manually. Cards label unavailable drives; file-changing actions require an available game folder.
 - Opening a game detects new standard-file candidates and shows their count. **Files → Review files…** includes current selections and new candidates in one batch, with proxy evidence and external paths. Add existing files or absent relative paths; uncheck files to stop tracking them in future backups. Existing snapshots remain intact.
 - The setup guide helps choose files and establish a clean, user-confirmed **Original**. In **Backups**, save/rename versions, preview restoration, or use **Show files** to open the selected folder. Recovery backups are hidden by default; enable **Show recovery backups** to inspect them. Row selections survive refreshes, and selection-dependent actions stay disabled until a row is chosen.
@@ -50,6 +51,18 @@ Run `optibackup-ui-win-x64.exe` on Windows, or build it using the [desktop instr
 - **Settings → Change location…** copies and verifies backup storage before switching locations and keeps the old copies. The settings page also opens/copies the backup path and opens app data. **Open backups** opens the current game's snapshot collection when available.
 
 Discovery, hashing and file operations run off the UI thread and are serialized. Startup attempts pending game-file recovery before opening the library. Operation errors appear inline with a dismiss action. **Release downloads** opens GitHub Releases in a browser; desktop self-update is not implemented. Automatic update checks/installations remain CLI-only. Other advanced settings, including archive limits, remain available through CLI `config` commands; close the desktop app before using them.
+
+### Thumbnail downloads and privacy
+
+Downloads are enabled by default. **Settings → Download thumbnails automatically** disables future image requests; **Refresh thumbnails** retries the catalog. Cached images remain usable offline. When no installed Steam ID is available, the game's name is sent to Steam for matching. The search endpoint is public and keyless but undocumented, so availability and rate limits can change. No match is guessed when several exact matches exist.
+
+Images are HTTPS JPEG downloads limited to 4 MiB and verified with SHA-256 in the local cache at `%LOCALAPPDATA%\OptiScalerBackup\thumbnails` (or `<home>/thumbnails` with `--home`). Successful results are rechecked after 30 days; no-match results after seven days. Offline/service/rate-limit failures pause image downloads without blocking backup, restore or package operations. Changing the backup location does not move this separate cache.
+
+The app's network use is application updates plus optional thumbnail matching/downloads; game-file backup and package operations stay local. To disable thumbnail downloads from the CLI while the desktop app is closed:
+
+```powershell
+.\optibackup.exe config set download-thumbnails false
+```
 
 ## Game snapshots
 
@@ -157,6 +170,7 @@ Interactive startup checks for a newer stable release at most once daily and ask
 .\optibackup.exe update install
 .\optibackup.exe config show
 .\optibackup.exe config set check-updates false
+.\optibackup.exe config set download-thumbnails false
 .\optibackup.exe config set backup-directory (Read-Host 'New central backup folder')
 .\optibackup.exe config set max-archive-bytes 2147483648
 .\optibackup.exe config set max-archive-files 10000
@@ -180,6 +194,12 @@ dotnet run --project src/cli -- help
 dotnet run --project src/cli
 ```
 
+Optional live thumbnail verification makes actual requests to Steam and checks title matching, HTTPS image download and persistent cache integrity:
+
+```powershell
+dotnet run --project tests -- --live-thumbnails
+```
+
 Publish a self-contained Windows build:
 
 ```powershell
@@ -199,7 +219,7 @@ Run `artifacts/desktop/optibackup-ui.exe` on Windows. WPF cannot run on macOS/Li
 
 Node.js is needed only for repository guardrails (`npm run agent:preflight`, `npm run agent:pre-commit`, `npm run agent:session-end`); it is not an application dependency. Windows CI also runs `scripts/test-updater.ps1` against the published executable.
 
-Architecture: `src/core` contains storage, snapshots, transactions, packages and release fetching; `src/windows` contains launcher adapters, detection and updater hosting; `src/cli` provides menus/commands; `src/desktop` provides WPF windows and review dialogs. The core has no UI dependency.
+Architecture: `src/core` contains storage, snapshots, transactions, packages and release fetching; `src/windows` contains launcher adapters, detection, thumbnail fetching/cache and updater hosting; `src/cli` provides menus/commands; `src/desktop` provides WPF windows, background thumbnail coordination and review dialogs. The core has no UI dependency.
 
 Before a release, verify on a real Windows gaming PC:
 

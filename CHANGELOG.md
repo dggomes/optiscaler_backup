@@ -1,10 +1,13 @@
 # Changelog
 
-## [0.3.0] — 2026-10-30
+## [0.3.0] — 2026-10-30 (Unreleased)
 
 ### Added
 
-- Dark native WPF library cards with locally cached Steam covers or game executable icons. Artwork lookup makes no network requests.
+- Dark native WPF library cards with automatic keyless game thumbnails. Desktop startup scans installed launchers and queues background thumbnail checks for the entire catalog, not just the visible page.
+- Thumbnail matching uses a known Steam app ID when available; otherwise it accepts only a unique, exact normalized game-name match through Steam's public, undocumented storefront search and CDN. Unmatched games retain local artwork or initials.
+- Persistent SHA-256-verified JPEG cache under `<home>/thumbnails`, HTTPS-only requests and a 4 MiB image limit. Successful thumbnails are reused for 30 days; no-match results are retried after seven days.
+- Thumbnail downloads pause when offline or rate-limited. Settings provides manual refresh and an opt-out; CLI users can set `config set download-thumbnails false`. Downloads are enabled by default.
 - Paginated library browsing, search across the full catalog, backup-status filters, and keyboard shortcuts for search, library navigation and scanning.
 - Dedicated game workspaces with back navigation, contextual actions and disabled file-changing actions when a game's drive is unavailable.
 - Guided file selection and user-confirmed Original backup setup, including already managed and newly detected files with single-click inclusion controls.
@@ -15,9 +18,9 @@
 
 - Apply the dark theme across the main window and review dialogs, with visible errors, empty states and operation progress. Compact game workspaces scroll to preserve readable tables.
 - Show startup progress while opening storage and recovering unfinished operations in the background.
-- Desktop and CLI ship as version 0.3.0; the shared core and schema 2 storage format are unchanged.
+- Desktop and CLI target version 0.3.0. Catalog storage remains schema 2, with a backward-compatible thumbnail-download preference.
 
-Validated with 44 passing Windows service tests, CLI end-to-end checks, native updater integration tests and desktop behavior/render checks, including fresh catalogs, pagination, offline actions and dialog layouts. Linux and macOS pass 42 service tests with two Windows-only skips. Real gaming-PC acceptance testing remains pending.
+Earlier redesign checks passed on Windows, Linux and macOS. A live Steam lookup, HTTPS thumbnail download and persistent-cache verification have been checked; automated validation of the new thumbnail changes is pending. This version has not been tagged. Real gaming-PC acceptance testing remains pending.
 
 ## [0.2.0] — 2026-10-30
 

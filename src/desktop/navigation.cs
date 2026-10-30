@@ -50,7 +50,7 @@ public partial class MainWindow
         var warnings = new List<string>();
         await Work("Scanning folder", () => { var discovery = new OptiScalerBackup.Windows.Discovery(warnings.Add); discovery.Merge(store, discovery.Custom(folder.FolderName)); });
         if (warnings.Count > 0) ShowError(string.Join(" ", warnings.Take(3)));
-        await LoadArtwork();
+        await LoadArtwork(); StartThumbnails();
     });
     private async void ChangeLocation_Click(object sender, RoutedEventArgs e) => await Guard("Change backup location", async () =>
     {

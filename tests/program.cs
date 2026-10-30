@@ -7,6 +7,8 @@ using System.Text.Json;
 using OptiScalerBackup.Core;
 using OptiScalerBackup.Windows;
 
+if (args.SequenceEqual(new[] { "--live-thumbnails" })) { await ThumbnailTests.Live(); return 0; }
+
 var tests = new (string Name, Func<Task> Run)[]
 {
     ("Snapshots restore exact managed state and preserve unrelated files", () => Sync(SnapshotRoundTrip)),
@@ -52,7 +54,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Updater selects newer stable versions and trusted release assets", () => Sync(VersionSelection)),
     ("Updater handles no release, rate limiting and offline errors", UpdateCheckErrors),
     ("Updater verifies downloads and deletes corrupt staging", UpdateDownloads),
-    ("Updater refuses game-operation journal before helper staging", () => Sync(UpdateIdleGuard))
+    ("Updater refuses game-operation journal before helper staging", () => Sync(UpdateIdleGuard)),
+    ("Thumbnails match exact titles, persist cache and repair corrupt images", ThumbnailTests.Cache),
+    ("Thumbnails use installed Steam IDs and retain disconnected games", ThumbnailTests.SteamIdentity),
+    ("Thumbnails reject ambiguous and partial matches with negative caching", ThumbnailTests.Ambiguity),
+    ("Thumbnails reject bad responses, unsafe redirects and honor cancellation", ThumbnailTests.Failures),
+    ("Unsupported thumbnail cache formats are retained without rewriting", ThumbnailTests.FutureCache)
 };
 var failed = 0;
 var skipped = 0;

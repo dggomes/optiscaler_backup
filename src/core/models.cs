@@ -65,6 +65,7 @@ public sealed class Settings
 {
     public string? BackupDirectory { get; set; }
     public bool CheckUpdates { get; set; } = true;
+    public bool DownloadThumbnails { get; set; } = true;
     public DateTimeOffset? LastUpdateCheck { get; set; }
     public long MaxArchiveBytes { get; set; } = 2L * 1024 * 1024 * 1024;
     public int MaxArchiveFiles { get; set; } = 10000;

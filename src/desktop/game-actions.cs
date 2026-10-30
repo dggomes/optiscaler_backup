@@ -9,12 +9,13 @@ namespace OptiScalerBackup.Desktop;
 
 public partial class MainWindow
 {
-    private async void Scan_Click(object sender, RoutedEventArgs e) => await Guard("Scan library", async () =>
+    private async void Scan_Click(object sender, RoutedEventArgs e) => await ScanLibrary();
+    private async Task ScanLibrary() => await Guard("Scan library", async () =>
     {
         var warnings = new List<string>();
         await Work("Scanning installed launchers", () => { var discovery = new Discovery(warnings.Add); discovery.Merge(store, discovery.Scan([])); });
         if (warnings.Count > 0) ShowError(string.Join(" ", warnings.Take(3)));
-        await LoadArtwork();
+        await LoadArtwork(); StartThumbnails();
     });
     private async void AddGame_Click(object sender, RoutedEventArgs e) => await Guard("Add game", async () =>
     {
@@ -26,7 +27,7 @@ public partial class MainWindow
         var name = new NameDialog(this, "Add game", System.IO.Path.GetFileName(directory));
         if (name.ShowDialog() != true) return;
         await Work("Adding game", () => new Discovery(TraceWarning).Merge(store, [new(name.Value, directory, "Manual")]));
-        await LoadArtwork();
+        await LoadArtwork(); StartThumbnails();
     });
 
     private void TraceWarning(string message) => System.Diagnostics.Trace.WriteLine(message);

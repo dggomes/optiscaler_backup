@@ -15,6 +15,7 @@ Default home: `%LOCALAPPDATA%\OptiScalerBackup`. `--home <folder>` selects anoth
 | `rename-pending.json` | Snapshot-folder rename journal retained until catalog commit/recovery finishes |
 | `errors.log` | Timestamped CLI/menu errors |
 | `updates/` | Downloaded releases, helper executables and application-update state |
+| `thumbnails/` | Optional downloaded artwork and thumbnail-cache metadata; separate from payload storage |
 
 Paths beneath the configured payload root:
 
@@ -63,6 +64,19 @@ A package records ID/name/version/time, source ZIP hash, reviewed entry-to-desti
 An installation records ID, package ID, install/rollback times, installed file states and the pre-install snapshot of affected destinations. That snapshot can also appear in the game's snapshot list; both copies reference the same snapshot folder. Active-layer dependencies derive from overlapping physical paths and history order. Roll back newer overlapping layers first. Snapshot restoration touching an active package layer is blocked.
 
 Local metadata is trusted application state, not a signed interchange format. Do not hand-edit it while the app is open or use another person's catalog as an installation package.
+
+## Optional thumbnail cache
+
+Catalog schema 2 includes an optional `Settings.DownloadThumbnails` Boolean, defaulting to `true` when absent. This preference does not change snapshot/package formats or require a catalog migration. It controls desktop matching/download requests; previously cached images remain usable when disabled.
+
+`<home>/thumbnails` is independent of `Settings.BackupDirectory`. Backup relocation does not copy/move it, and thumbnail data is not required to restore games. Entries use a SHA-256 key derived from the catalog game ID, name and installation directory:
+
+- `<key>.jpg`: downloaded JPEG, limited to 4 MiB and checked against its recorded SHA-256 before use.
+- `<key>.json`: independent thumbnail-cache schema **1**, with `Version`, UTC `Checked`, optional Steam `AppId` and optional image `Hash`. Metadata is bounded to 16 KiB; unknown cache versions are rejected without rewriting them.
+
+Successful entries are rechecked after 30 days; no-match entries after seven days. Explicit **Refresh thumbnails** bypasses those freshness windows. Image replacement and metadata writes use temporary files; unavailable images retain local-cover/icon/initial fallbacks. Corrupt cached image bytes are rejected and may be downloaded again. Old valid images can still be displayed offline.
+
+The desktop attempts all catalog entries in the background, using an installed Steam ID or a unique exact normalized-title match. Unknown IDs send game names to Steam's public, undocumented search endpoint; image requests use HTTPS Steam CDN URLs. Requests need no API key. Search responses are limited to 1 MiB. Offline/rate-limit failures pause image requests rather than backup operations. Application updates and optional thumbnail matching/downloads are the app's network uses; snapshot/package operations remain local.
 
 ## Automatic schema 1 conversion
 

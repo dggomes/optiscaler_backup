@@ -322,6 +322,9 @@ internal sealed partial class Application(Store store, Engine engine)
         var value = args.At(3);
         switch (args.At(2))
         {
+            case "download-thumbnails":
+                if (!bool.TryParse(value, out var thumbnails)) throw new ArgumentException("download-thumbnails must be true or false.");
+                store.Data.Settings.DownloadThumbnails = thumbnails; break;
             case "check-updates":
                 if (!bool.TryParse(value, out var check)) throw new ArgumentException("check-updates must be true or false.");
                 store.Data.Settings.CheckUpdates = check; break;
