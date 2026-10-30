@@ -12,6 +12,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Snapshots restore exact managed state and preserve unrelated files", () => Sync(SnapshotRoundTrip)),
     ("Snapshot does not infer absence for files managed after capture", () => Sync(UnknownAbsence)),
     ("Original requires clean confirmation and cannot be replaced", () => Sync(OriginalGuard)),
+    ("Maximum-length labels remain usable during recovery capture", () => Sync(LongLabels)),
     ("External settings restore under explicitly approved roots", () => Sync(ExternalSettings)),
     ("Unavailable external root is never captured as file absence", () => Sync(ExternalUnavailable)),
     ("Corrupt payload is rejected before any mutation", () => Sync(Corruption)),
@@ -109,6 +110,16 @@ static void OriginalGuard()
     Throws(() => f.Engine.CreateSnapshot(f.Game, "Original", true, false), "confirm");
     f.Engine.CreateSnapshot(f.Game, "Original", true, true);
     Throws(() => f.Engine.CreateSnapshot(f.Current, "Original again", true, true));
+}
+static void LongLabels()
+{
+    using var f = new Fixture(); f.Write("a.ini", "original"); f.Game.Managed = [T("a.ini")];
+    var snapshot = f.Engine.CreateSnapshot(f.Game, new string('s', 160), false, false);
+    var package = f.Package(new string('p', 160), ("a.ini", "package"));
+    var install = f.Engine.Install(f.Current, package, false);
+    f.Engine.Rollback(f.Current, install, false);
+    f.Engine.Restore(f.Current, snapshot);
+    Equal("original", f.Read("a.ini")); True(f.Current.Snapshots.All(s => s.Name.Length <= 160));
 }
 static void ExternalSettings()
 {

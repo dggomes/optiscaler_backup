@@ -7,7 +7,9 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
     public Snapshot Capture(Game game, IEnumerable<Target> targets, string name, bool recovery = false)
     {
         RequireAvailable(game);
-        var snapshot = new Snapshot { Name = Format.Label(name), Recovery = recovery };
+        var label = recovery && name.Length > 160 ? name[..160] : name;
+        if (label.Length > 0 && char.IsHighSurrogate(label[^1])) label = label[..^1];
+        var snapshot = new Snapshot { Name = Format.Label(label), Recovery = recovery };
         var selected = targets.DistinctBy(t => t.Key).ToList();
         SafePaths.DistinctDestinations(selected.Select(t => SafePaths.Resolve(game, t)));
         foreach (var target in selected)
