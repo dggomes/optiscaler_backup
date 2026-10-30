@@ -173,7 +173,7 @@ public partial class MainWindow : Window
     }
     private async Task LoadArtwork()
     {
-        if (smoke || busy || page != Page.Library) return;
+        if (busy || page != Page.Library) return;
         var generation = ++artworkGeneration;
         var missing = GameList.Items.Cast<GameRow>().Where(r => !artwork.ContainsKey(r.Id)).Select(r => Format.Clone(store.Game(r.Id))).ToList();
         var loaded = await Task.Run(() => missing.Select(g => (g.Id, Image: GameArtwork.Load(g, CachedThumbnail(g)))).ToList());
@@ -222,7 +222,9 @@ public partial class MainWindow : Window
         SearchBox.Text = "__no_matching_game__";
         if (GameList.Items.Count != 0 || EmptyState.Visibility != Visibility.Visible) throw new InvalidOperationException("Search empty state failed.");
         await Capture(screenshot + ".empty.png");
-        SearchBox.Clear();
+        SearchBox.Clear(); await LoadArtwork();
+        foreach (var row in GameList.Items.Cast<GameRow>())
+            if (CachedThumbnail(store.Game(row.Id)) != null && row.Artwork == null) throw new InvalidOperationException("Cached thumbnail did not render.");
         if (GameList.Items.Count != Math.Min(count, PageSize)) throw new InvalidOperationException("Clearing search failed.");
         await Capture(screenshot);
         if (count == 0) return;

@@ -28,6 +28,17 @@ try {
     'quality=high' | Set-Content (Join-Path $testGame 'OptiScaler.ini')
     'dxgi test fixture' | Set-Content (Join-Path $testGame 'dxgi.dll')
     $game = (Invoke-Cli -CommandArgs @('games','add','Desktop integration fixture',$testGame)) | ConvertFrom-Json
+    # Optional real image fixture; provider outages must not block local UI tests.
+    $coverFile = Join-Path $testRoot 'steam-cover.jpg'
+    try {
+        Invoke-WebRequest -Uri 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg' -OutFile $coverFile -TimeoutSec 15
+        $cache = Join-Path $testData 'thumbnails'
+        New-Item -ItemType Directory -Path $cache -Force | Out-Null
+        $identity = $game.Id + "`n" + $game.Name + "`n" + $game.Directory
+        $key = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($identity))).ToLowerInvariant()
+        Copy-Item $coverFile (Join-Path $cache ($key + '.jpg'))
+        @{ Version = 1; Checked = ([DateTimeOffset]::UtcNow).ToString('o'); AppId = 1091500; Hash = (Get-FileHash $coverFile -Algorithm SHA256).Hash.ToLowerInvariant() } | ConvertTo-Json | Set-Content (Join-Path $cache ($key + '.json')) -Encoding utf8
+    } catch { Write-Host ('Optional live cover fixture unavailable: ' + $_.Exception.Message) }
     $null = Invoke-Cli -CommandArgs @('files','add',$game.Id,'OptiScaler.ini')
     $null = Invoke-Cli -CommandArgs @('snapshots','create',$game.Id,'Original','--original','--confirm-clean')
     Compress-Archive -Path (Join-Path $testGame 'OptiScaler.ini') -DestinationPath $testZip
@@ -53,5 +64,5 @@ try {
     foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
         if (-not (Test-Path $path) -or (Get-Item $path).Length -lt 1000) { throw "Desktop render missing/empty: $path" }
     }
-    Write-Host 'PASS desktop startup, pagination, global search, navigation, selection retention, offline actions, thumbnail preferences, recovery filtering and dialog rendering'
+    Write-Host 'PASS desktop startup, pagination, global search, navigation, selection retention, offline actions, cached thumbnail display/preferences, recovery filtering and dialog rendering'
 } finally { Remove-Item $testRoot -Recurse -Force }
