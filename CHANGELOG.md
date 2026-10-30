@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0] — Unreleased
+## [0.1.0] — 2026-10-30
 
 ### Added
 
@@ -14,4 +14,4 @@
 - GitHub Releases update checks and confirmed installation for published Windows executables, with checksum validation and executable rollback.
 - Configurable backup storage, update checks and archive limits.
 
-Windows launcher compatibility and executable replacement still require validation against real Windows installations before a stable release.
+Real Windows-game acceptance testing is still pending; launcher compatibility and executable replacement have not yet been verified against a real gaming installation.
