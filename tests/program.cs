@@ -11,6 +11,9 @@ if (args.SequenceEqual(new[] { "--live-thumbnails" })) { await ThumbnailTests.Li
 
 var tests = new (string Name, Func<Task> Run)[]
 {
+    ("Compatibility packs preserve unknown, conflicting and released/main provenance", () => Sync(CompatibilityPackTests.Provenance)),
+    ("Compatibility packs reject unsafe formats, digests, commands and app versions", () => Sync(CompatibilityPackTests.Guards)),
+    ("Compatibility matching preserves editions and requires a unique exact identity", () => Sync(CompatibilityPackTests.Matching)),
     ("Prepared discovery merges without rescanning or overwriting concurrent backup metadata", () => Sync(InventoryTests.PreparedDiscovery)),
     ("Inventory versions capture changes, deletions and proven original absence", () => Sync(InventoryTests.RoundTrip)),
     ("Inventory rejects drift, corruption and future metadata without rewriting", () => Sync(InventoryTests.Safety)),

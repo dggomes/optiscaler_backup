@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Development foundation for the future manager: independently implemented immutable contracts for source provenance, game analysis, resolved components and file-operation plans.
+- Upstream source registry distinguishing released OptiPatcher compatibility, preview/main observations, the official OptiScaler wiki and reference-only repositories.
+- Bounded, SHA-256-verified, display-only JSON compatibility-pack format 1 with separate `data-v` tags, strict field validation and source evidence checks.
+- Conservative matching by exact launcher ID or a unique exact normalized title, preserving edition distinctions, conflicting observations and Unknown / Not applicable support states.
+
+This is the first development slice of the manager work ([#12](https://github.com/dggomes/optiscaler_backup/issues/12), under [#9](https://github.com/dggomes/optiscaler_backup/issues/9)), not the full Phase A implementation. CLI/UI integration, feed refresh or activation, component installation and schema 3 are not included.
+
 ## [0.3.1] — 2026-10-30
 
 ### Added

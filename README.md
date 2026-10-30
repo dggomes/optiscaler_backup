@@ -234,6 +234,8 @@ Node.js is needed only for repository guardrails (`npm run agent:preflight`, `np
 
 Architecture: `src/core` contains storage, snapshots, transactions, packages and release fetching; `src/windows` contains launcher adapters, detection, thumbnail fetching/cache and updater hosting; `src/cli` provides menus/commands; `src/desktop` provides WPF windows, background thumbnail coordination and review dialogs. The core has no UI dependency.
 
+An additional [manager-data foundation](docs/manager-data-format.md) defines immutable, display-only compatibility packs, source provenance and future operation-plan contracts. It has no CLI/UI feature, network refresh or activation/execution yet; existing schema 2 backups remain unaffected.
+
 Before a release, verify on a real Windows gaming PC:
 
 - Scan each installed launcher and confirm paths, duplicate handling, nested executables and unavailable drives.
