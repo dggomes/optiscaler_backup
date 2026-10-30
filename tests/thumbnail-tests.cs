@@ -20,7 +20,7 @@ internal static class ThumbnailTests
     public static async Task Cache()
     {
         using var fixture = new Fixture(); var requests = 0;
-        using var http = new HttpClient(new FakeHttp(request => { requests++; return request.RequestUri!.Host == "store.steampowered.com" ? Search((123, "Fixture®: Game")) : Image(); }));
+        using var http = new HttpClient(new FakeHttp(request => { requests++; return request.RequestUri!.Host == "store.steampowered.com" ? Search((123, "Fixture®™: Game")) : Image(); }));
         var service = new Thumbnails(http, fixture.Home, TimeSpan.Zero);
         var file = await service.Download(fixture.Game, false); Check(file != null && File.Exists(file) && requests == 2);
         Check(await service.Download(fixture.Game, false) == file && requests == 2);

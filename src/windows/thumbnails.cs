@@ -90,7 +90,7 @@ public sealed class Thumbnails(HttpClient client, string home, TimeSpan? request
             .Select(item => item.GetProperty("id").GetInt32()).Distinct().ToList();
         return matches.Count == 1 ? matches[0] : null;
     }
-    private static string Normalize(string name) => string.Concat(name.Replace("&", "and", StringComparison.Ordinal).Normalize(NormalizationForm.FormKD)
+    private static string Normalize(string name) => string.Concat(name.Replace("&", "and", StringComparison.Ordinal).Replace("™", "", StringComparison.Ordinal).Normalize(NormalizationForm.FormKD)
         .EnumerateRunes().Where(Rune.IsLetterOrDigit).Select(r => Rune.ToLowerInvariant(r).ToString()));
 
     public static int? SteamAppId(Game game)

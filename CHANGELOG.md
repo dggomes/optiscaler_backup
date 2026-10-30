@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.0] — 2026-10-30 (Unreleased)
+## [0.3.0] — 2026-10-30
 
 ### Added
 
@@ -20,7 +20,7 @@
 - Show startup progress while opening storage and recovering unfinished operations in the background.
 - Desktop and CLI target version 0.3.0. Catalog storage remains schema 2, with a backward-compatible thumbnail-download preference.
 
-Earlier redesign checks passed on Windows, Linux and macOS. A live Steam lookup, HTTPS thumbnail download and persistent-cache verification have been checked; automated validation of the new thumbnail changes is pending. This version has not been tagged. Real gaming-PC acceptance testing remains pending.
+Validated with 49 passing Windows service tests, CLI/menu end-to-end checks, native updater integration tests and desktop behavior/render checks, including cached thumbnail display/preferences, fresh catalogs, pagination and compact layouts. Linux/macOS pass 47 service tests with two Windows-only skips. A live Steam lookup, HTTPS image download and persistent-cache verification also passed. Real gaming-PC acceptance testing remains pending.
 
 ## [0.2.0] — 2026-10-30
 
