@@ -40,7 +40,7 @@ public partial class MainWindow : Window
         this.store = store; this.engine = engine; this.smoke = smoke;
         thumbnails = new Thumbnails(thumbnailHttp, store.Home);
         InitializeComponent(); WindowChrome.Apply(this); Refresh();
-        if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); };
+        if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); await StartupUpdateCheck(); };
         Closed += (_, _) => { thumbnailCancellation?.Cancel(); thumbnailHttp.Dispose(); };
     }
 
@@ -82,6 +82,7 @@ public partial class MainWindow : Window
             LibraryNav.IsChecked = page != Page.Settings; SettingsNav.IsChecked = page == Page.Settings;
             TopActions.Visibility = page == Page.Library ? Visibility.Visible : Visibility.Collapsed;
             PageDescription.Text = page == Page.Library ? "Choose a game to manage its backups and packages." : page == Page.Settings ? "Storage and application preferences." : "Back up, change settings, and return to a working version.";
+            AutomaticUpdatesToggle.IsChecked = store.Data.Settings.CheckUpdates;
             DownloadThumbnailsToggle.IsChecked = store.Data.Settings.DownloadThumbnails;
             RetryThumbnailsButton.IsEnabled = store.Data.Settings.DownloadThumbnails;
             BackupLocationText.Text = store.PayloadRoot; VersionText.Text = "OptiScaler Backup " + Releases.Current.ToString(3);
@@ -144,6 +145,7 @@ public partial class MainWindow : Window
         RestoreButton.IsEnabled = online && snapshot; ShowFilesButton.IsEnabled = snapshot; RenameBackupButton.IsEnabled = snapshot;
         InstallButton.IsEnabled = online && PackageList.SelectedItem != null; RenamePackageButton.IsEnabled = !busy && PackageList.SelectedItem != null;
         RollbackButton.IsEnabled = online && InstallationList.SelectedItem != null;
+        UpdateUpdateActions();
     }
 
     private void ActionSelection_Changed(object sender, SelectionChangedEventArgs e) => UpdateActions();
@@ -184,14 +186,30 @@ public partial class MainWindow : Window
     }
 
     private static string Physical(Game game, Target target) => Path.GetFullPath(Path.Combine(target.Root == "game" ? game.Directory : game.ExternalRoots[target.Root], target.Path));
-    private async Task<T> Work<T>(string operation, Func<T> action)
+    private void BeginWork(string operation)
     {
         if (busy) throw new InvalidOperationException("Wait for the current operation to finish.");
         busy = true; SetWorkspaceEnabled(false); BusyProgress.Visibility = Visibility.Visible; StatusText.Text = operation + "…";
+    }
+    private void EndWork()
+    {
+        busy = false; SetWorkspaceEnabled(true); BusyProgress.Visibility = Visibility.Collapsed; Refresh();
+        if (thumbnailsPending) StartThumbnails(thumbnailsPendingRetry);
+        if (updateCheckPending) { updateCheckPending = false; _ = StartupUpdateCheck(); }
+    }
+    private async Task<T> Work<T>(string operation, Func<T> action)
+    {
+        BeginWork(operation);
         try { var value = await Task.Run(action); StatusText.Text = operation + " complete."; return value; }
-        finally { busy = false; SetWorkspaceEnabled(true); BusyProgress.Visibility = Visibility.Collapsed; Refresh(); if (thumbnailsPending) StartThumbnails(thumbnailsPendingRetry); }
+        finally { EndWork(); }
     }
     private Task Work(string operation, Action action) => Work(operation, () => { action(); return true; });
+    private async Task WorkAsync(string operation, Func<Task> action)
+    {
+        BeginWork(operation);
+        try { await action(); StatusText.Text = operation + " complete."; }
+        finally { EndWork(); }
+    }
     private async Task Guard(string operation, Func<Task> action)
     {
         if (busy) return;
@@ -265,7 +283,23 @@ public partial class MainWindow : Window
         if (Store.Read<Catalog>(Path.Combine(store.Home, "catalog.json")).Settings.DownloadThumbnails || RetryThumbnailsButton.IsEnabled) throw new InvalidOperationException("Thumbnail opt-out did not persist.");
         DownloadThumbnailsToggle.IsChecked = true; await SaveThumbnailPreference();
         if (!Store.Read<Catalog>(Path.Combine(store.Home, "catalog.json")).Settings.DownloadThumbnails || !RetryThumbnailsButton.IsEnabled) throw new InvalidOperationException("Thumbnail opt-in did not persist.");
+        AutomaticUpdatesToggle.IsChecked = false; await SaveUpdatePreference();
+        if (Store.Read<Catalog>(Path.Combine(store.Home, "catalog.json")).Settings.CheckUpdates) throw new InvalidOperationException("Update opt-out did not persist.");
+        AutomaticUpdatesToggle.IsChecked = true; await SaveUpdatePreference();
+        if (!Store.Read<Catalog>(Path.Combine(store.Home, "catalog.json")).Settings.CheckUpdates) throw new InvalidOperationException("Update opt-in did not persist.");
+        ShowUpdate(new ReleaseInfo("v99.0.0", "Update review fixture", "", "", ""));
+        if (UpdateNotice.Visibility != Visibility.Visible || !InstallUpdateButton.IsEnabled) throw new InvalidOperationException("Available update controls are missing.");
         SettingsPanel.ScrollToBottom(); await Capture(screenshot + ".settings-bottom.png");
+        await RenderDialog(new ConfirmationDialog(this, "Update OptiScaler Backup", "Review the version and installed components before downloading.",
+            "v99.0.0 · update review fixture\n\noptibackup-ui.exe\noptibackup.exe\n\nBoth executables are verified and previous copies retained.", "Download, update and restart"), screenshot + ".update.png");
+        var finish = new TaskCompletionSource();
+        var asyncWork = WorkAsync("Downloading application updates", () => finish.Task);
+        if (!busy || InstallUpdateButton.IsEnabled) throw new InvalidOperationException("Async updater work did not keep the installation busy.");
+        var closing = new CancelEventArgs(); Window_Closing(this, closing);
+        if (!closing.Cancel) throw new InvalidOperationException("Updater allowed exit before staging completed.");
+        finish.SetResult(); await asyncWork;
+        if (busy) throw new InvalidOperationException("Updater did not release its busy guard.");
+        ShowUpdate(null);
         page = Page.Game; Refresh(); GameTabs.SelectedIndex = 0;
         var game = Selected;
         await RenderDialog(new FileReviewDialog(this, store, game, FindFiles(game)), screenshot + ".files.png");

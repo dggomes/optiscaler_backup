@@ -2,11 +2,13 @@
 
 WPF frontend for the shared .NET 10 core. It uses the same catalog and backups as the CLI, including package installation history. Only one session may open a data home at a time; close the CLI before starting the desktop app.
 
-Version 0.3.1 uses a compact portrait library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick). Backup schema 2 and thumbnail-cache schema 1 remain unchanged; this release does not add another storage migration.
+Version 0.3.1 uses a compact portrait library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick), plus shared CLI/desktop self-updates. Backup schema 2 and thumbnail-cache schema 1 remain unchanged; this release does not add another storage migration.
 
 ## Build and run
 
 Download the self-contained `optibackup-ui-win-x64.exe` and its `.exe.sha256` checksum from [GitHub Releases](https://github.com/dggomes/optiscaler_backup/releases), available from v0.2.0. Run the executable on Windows; no .NET SDK/runtime installation is required for release builds.
+
+Keep it beside `optibackup-win-x64.exe` to update both interfaces together. Short names `optibackup-ui.exe` and `optibackup.exe` are also supported. Only recognized executables already in that folder are updated; copies elsewhere and uninstalled components are excluded.
 
 The desktop project is deliberately outside `optiscaler-backup.sln`, keeping core/CLI solution builds cross-platform. Install the .NET 10 SDK, then on Windows:
 
@@ -58,17 +60,20 @@ The game workspace scrolls in compact windows to keep package tables and their a
 
 Older cached headers receive a background portrait attempt even when still within the 30-day window. Existing images remain visible offline or when downloads are disabled. Cache metadata records that a portrait was attempted, not that the final image is necessarily a portrait; a missing portrait may still use the header fallback.
 
-**Release downloads** opens the repository's releases page; the desktop app does not automatically check for or install updates. Use CLI `config` for other advanced settings, such as archive limits, after closing the desktop app.
+**Check for updates at startup** uses the same enabled/disabled preference and once-daily schedule as the CLI. **Check updates** performs a manual check; an available update is shown in settings and a banner. **Install update…** presents the release version, notes and exact executable targets before confirmation, download and restart. **Release downloads** still opens GitHub Releases in a browser. Offline checks do not block game operations. Use CLI `config` for other advanced settings, such as archive limits, after closing the desktop app.
+
+The shared updater downloads the installed same-folder components from one release and checks each checksum independently. Close the companion interface before installation. Pending game/rename recovery or unwritable destinations block updating. Previous executables are retained as `.previous`; every updated component is health-checked, including desktop WPF runtime/theme loading. Failure or interrupted replacement restores the entire group. The initiating interface restarts using the same data home. Published Windows builds can self-install; development builds can check releases only.
 
 First opening a schema 1 catalog converts existing snapshots to schema 2 folders, retaining `catalog.v1.json` and old blobs. Allow extra disk space for full copies. Schema 2 is not readable by v0.1.x. See [storage and recovery](../../docs/storage-format.md) before moving or restoring the data home.
 
 ## Boundaries
 
-- `app.cs`: WPF entrypoint, catalog lock, startup recovery and startup/render smoke entrypoint.
+- `app.cs`: WPF entrypoint, catalog lock, startup recovery, shared updater helper/health entrypoints and startup/render smoke entrypoint.
 - `main-window.xaml` / `.xaml.cs`: library/search, pagination, selection state and serialized background work.
 - `navigation.cs` / `game-actions.cs`: library/settings navigation, storage relocation and game backup/package workflows.
 - `game-artwork.cs`: cached-download/local Steam cover and executable-icon loading with initials supplied by the library.
 - `thumbnails.cs`: catalog-wide background download scheduling, progress, retry and opt-out; matching/cache integrity belongs to the Windows adapter service.
+- `updates.cs`: shared daily/manual release checks, opt-out, release-note/target confirmation and staged update/restart.
 - `theme.xaml` / `window-chrome.cs`: shared dark controls and native window styling.
 - `dialogs.cs`: managed-file batch selection, labels/Original confirmation, ZIP mappings and change/conflict previews.
 

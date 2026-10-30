@@ -2,6 +2,14 @@
 
 ## [0.3.1] — 2026-10-30
 
+### Added
+
+- Desktop self-update with a daily startup check, update banner, manual check/install controls and release-note confirmation. CLI and desktop share the automatic-check preference and timestamp; automatic checks can be disabled.
+- Update installed CLI/UI companions together when their recognized executable names are in the same folder. Download and verify every component from the same GitHub release; absent companions are not installed.
+- Paired updater jobs retain `.previous` executable copies, wait for the initiating app to exit, require idle storage and block running companions. Each updated component receives a health check, including WPF resource startup; failures or interruptions restore the recorded previous executables.
+- Preserve custom data-home paths on restart and archive completed updater jobs before restarting older binaries. Paired job format 2 retains compatibility with legacy single-CLI format 1 jobs.
+- Repair an older companion from the current stable release without downgrading a companion that is already newer.
+
 ### Changed
 
 - Compact library cards use 112 × 168 portrait cover areas with 10 px gutters, a single-line title and status, and full game names in tooltips.
@@ -9,7 +17,7 @@
 - Request Steam's real `library_600x900.jpg` portrait artwork first; fall back to `header.jpg` only when the portrait is unavailable (HTTP 404).
 - Automatically refresh older landscape thumbnail caches using an optional `PortraitChecked` metadata field. Existing covers remain available offline; no catalog or cache-schema migration is required.
 
-Cache-upgrade and portrait-fallback coverage has been added. Windows rendering and library-density validation are pending. Real gaming-PC acceptance testing remains pending.
+Portrait-cache and paired-updater coverage has been added. Release validation, including native paired/legacy updater tests and Windows rendering/library-density checks, is pending. Real gaming-PC acceptance testing remains pending.
 
 ## [0.3.0] — 2026-10-30
 

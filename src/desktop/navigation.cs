@@ -11,7 +11,7 @@ public partial class MainWindow
 {
     private void SetWorkspaceEnabled(bool enabled)
     {
-        Workspace.IsEnabled = enabled; TopActions.IsEnabled = enabled; Navigation.IsEnabled = enabled;
+        Workspace.IsEnabled = enabled; TopActions.IsEnabled = enabled; Navigation.IsEnabled = enabled; UpdateNotice.IsEnabled = enabled;
         UpdateActions();
     }
     private void ShowError(string message) { ErrorText.Text = message; ErrorBanner.Visibility = Visibility.Visible; }

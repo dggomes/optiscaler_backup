@@ -15,6 +15,8 @@ public sealed class App : Application
         string? screenshot = null;
         try
         {
+            if (args.Length >= 2 && args[0] == "--update-helper") return UpdateHost.RunHelper(args[1], args.Contains("--rollback-update"));
+            if (args.Length == 2 && args[0] == "--update-health") return UpdateHost.Health(args[1], Releases.UiAsset, ProbeRuntime);
             var home = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OptiScalerBackup");
             for (var i = 0; i < args.Length; i++)
             {
@@ -60,8 +62,14 @@ public sealed class App : Application
             {
                 try
                 {
-                    Engine? engine = null;
-                    await Task.Run(() => { store = new Store(home); engine = new Engine(store, Detection.EnsureStopped); engine.Recover(); });
+                    Engine? engine = null; var recoveringUpdate = false;
+                    await Task.Run(() =>
+                    {
+                        store = new Store(home);
+                        if (UpdateHost.ResumePending(home)) { recoveringUpdate = true; return; }
+                        engine = new Engine(store, Detection.EnsureStopped); engine.Recover();
+                    });
+                    if (recoveringUpdate) { opening = false; app.Shutdown(0); return; }
                     var window = new MainWindow(store!, engine!, screenshot != null);
                     if (screenshot != null)
                     {
@@ -89,8 +97,25 @@ public sealed class App : Application
                 try { SafePaths.NoLinks(screenshot); File.WriteAllText(screenshot + ".error", error.ToString()); }
                 catch (Exception logError) when (logError is IOException or UnauthorizedAccessException) { Console.Error.WriteLine(logError.Message); }
             }
-            if (!args.Contains("--smoke-test")) MessageBox.Show(error.Message + "\nClose other OptiScaler Backup sessions and resolve any pending recovery before retrying.", "Cannot open OptiScaler Backup", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (!args.Contains("--smoke-test") && !args.Contains("--update-helper") && !args.Contains("--update-health")) MessageBox.Show(error.Message + "\nClose other OptiScaler Backup sessions and resolve any pending recovery before retrying.", "Cannot open OptiScaler Backup", MessageBoxButton.OK, MessageBoxImage.Error);
             return 1;
         }
     }
+    private static void ProbeRuntime()
+    {
+        RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+        var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        var probe = new Window
+        {
+            Width = 240,
+            Height = 120,
+            Left = -10000,
+            Top = -10000,
+            ShowActivated = false,
+            ShowInTaskbar = false,
+            Content = new System.Windows.Controls.Button { Content = "Update check", Style = (Style)app.FindResource("Primary") }
+        };
+        probe.Show(); probe.UpdateLayout(); probe.Close(); app.Shutdown();
+    }
+
 }

@@ -60,7 +60,10 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Thumbnails reject ambiguous and partial matches with negative caching", ThumbnailTests.Ambiguity),
     ("Thumbnails reject bad responses, unsafe redirects and honor cancellation", ThumbnailTests.Failures),
     ("Unsupported thumbnail cache formats are retained without rewriting", ThumbnailTests.FutureCache),
-    ("Portrait thumbnails refresh legacy covers and cache header fallbacks", ThumbnailTests.PortraitUpgrade)
+    ("Portrait thumbnails refresh legacy covers and cache header fallbacks", ThumbnailTests.PortraitUpgrade),
+    ("Updater selects paired assets from the same release and permits current-version repair", UpdateBundleTests.Selection),
+    ("Updater verifies CLI and UI downloads independently", UpdateBundleTests.Downloads),
+    ("Updater preserves check metadata and rejects unsafe companion paths", UpdateBundleTests.MetadataAndGuards)
 };
 var failed = 0;
 var skipped = 0;
@@ -371,6 +374,8 @@ static async Task UpdateCheckErrors()
     await ThrowsAsync(async () => await new Releases(limited).Check());
     using var offline = new HttpClient(new FakeHttp(_ => throw new HttpRequestException("offline")));
     await ThrowsAsync(async () => await new Releases(offline).Check());
+    using var malformed = new HttpClient(new FakeHttp(_ => new(HttpStatusCode.OK) { Content = new StringContent("{}") }));
+    await ThrowsAsync(async () => await new Releases(malformed).Check());
 }
 static async Task UpdateDownloads()
 {

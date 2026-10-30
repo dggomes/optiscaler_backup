@@ -32,9 +32,14 @@
                     <Button Content="Add game" Style="{StaticResource Primary}" Click="AddGame_Click" Margin="0"/>
                 </StackPanel>
             </Grid>
-            <Border x:Name="ErrorBanner" Grid.Row="1" Visibility="Collapsed" Background="{DynamicResource ErrorSurface}" CornerRadius="8" Padding="14,10" Margin="0,0,0,16">
+            <StackPanel Grid.Row="1">
+            <Border x:Name="ErrorBanner" Visibility="Collapsed" Background="{DynamicResource ErrorSurface}" CornerRadius="8" Padding="14,10" Margin="0,0,0,16">
                 <DockPanel><Button DockPanel.Dock="Right" Style="{StaticResource Quiet}" Content="Dismiss" Click="DismissError_Click" Margin="12,0,0,0"/><TextBlock x:Name="ErrorText" Foreground="{DynamicResource ErrorInk}" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel>
             </Border>
+            <Border x:Name="UpdateNotice" Visibility="Collapsed" Background="{DynamicResource AccentSurface}" CornerRadius="8" Padding="14,10" Margin="0,0,0,16">
+                <DockPanel><Button x:Name="BannerInstallUpdateButton" DockPanel.Dock="Right" Content="Review update…" Click="InstallUpdate_Click" Margin="14,0,0,0"/><TextBlock x:Name="UpdateNoticeText" VerticalAlignment="Center" TextWrapping="Wrap"/></DockPanel>
+            </Border>
+            </StackPanel>
             <Grid x:Name="Workspace" Grid.Row="2">
                 <Grid x:Name="LibraryPanel">
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -121,7 +126,13 @@
                         <TextBlock Text="Downloads run in the background and are cached for offline use. Unmatched or unavailable games keep local artwork or initials." Style="{StaticResource MutedText}" Margin="0,9,0,14"/>
                         <Button x:Name="RetryThumbnailsButton" Content="Refresh thumbnails" Click="RetryThumbnails_Click" HorizontalAlignment="Left"/>
                     </StackPanel></Border>
-                    <Border Background="{DynamicResource Surface}" CornerRadius="10" Padding="22" Margin="0,16,0,0"><StackPanel><TextBlock Text="Application" FontSize="17" FontWeight="SemiBold"/><TextBlock x:Name="VersionText" Foreground="{DynamicResource Muted}" Margin="0,10,0,15"/><WrapPanel><Button Content="Release downloads ↗" Click="Releases_Click"/><Button Content="Open app data" Style="{StaticResource Quiet}" Click="OpenData_Click"/></WrapPanel><TextBlock Text="Download desktop updates from the release page. Your catalog and backup files are kept separately from the executable." Style="{StaticResource MutedText}" FontSize="12" Margin="0,13,0,0"/></StackPanel></Border>
+                    <Border Background="{DynamicResource Surface}" CornerRadius="10" Padding="22" Margin="0,16,0,0"><StackPanel><TextBlock Text="Application" FontSize="17" FontWeight="SemiBold"/><TextBlock x:Name="VersionText" Foreground="{DynamicResource Muted}" Margin="0,10,0,12"/>
+                        <CheckBox x:Name="AutomaticUpdatesToggle" Content="Check for updates at startup" Click="UpdatePreference_Click" Margin="0,0,0,12"/>
+                        <TextBlock x:Name="UpdateStatusText" Text="Check GitHub Releases for a newer stable version." Style="{StaticResource MutedText}" Margin="0,0,0,14"/>
+                        <WrapPanel><Button x:Name="CheckUpdatesButton" Content="Check updates" Click="CheckUpdates_Click"/><Button x:Name="InstallUpdateButton" Content="Install update…" Style="{StaticResource Primary}" Click="InstallUpdate_Click" IsEnabled="False"/><Button Content="Release downloads ↗" Style="{StaticResource Quiet}" Click="Releases_Click"/></WrapPanel>
+                        <TextBlock Text="Updates are downloaded and verified before restarting. Installed CLI and UI executables in this folder update together; previous copies are retained for rollback." Style="{StaticResource MutedText}" FontSize="12" Margin="0,13,0,12"/>
+                        <Button Content="Open app data" Style="{StaticResource Quiet}" Click="OpenData_Click" HorizontalAlignment="Left"/>
+                    </StackPanel></Border>
                 </StackPanel></ScrollViewer>
             </Grid>
             <Grid Grid.Row="3" Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><ProgressBar x:Name="BusyProgress" IsIndeterminate="True" Height="3" Visibility="Collapsed" Foreground="{DynamicResource Accent}" Background="{DynamicResource Line}" BorderThickness="0" Margin="0,0,0,9"/><DockPanel Grid.Row="1"><TextBlock Text="Local backups" Foreground="{DynamicResource Muted}" FontSize="11" DockPanel.Dock="Right" Margin="20,0,0,0"/><TextBlock x:Name="StatusText" Text="Ready" Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap"/></DockPanel></Grid>

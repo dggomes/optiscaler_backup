@@ -362,8 +362,9 @@ internal sealed partial class Application(Store store, Engine engine)
         store.Data.Settings.LastUpdateCheck = DateTimeOffset.UtcNow;
         store.Save();
         using var checkTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        var release = await releases.Check(checkTimeout.Token);
-        if (release == null) { if (!startup) Output(new { Current = Releases.Current.ToString(3), Update = "No newer stable release" }, args); return; }
+        var release = await releases.Check(checkTimeout.Token, includeCurrent: true);
+        UpdateHost.RememberRelease(store.Home, release);
+        if (release == null || !UpdateHost.NeedsUpdate(release)) { if (!startup) Output(new { Current = Releases.Current.ToString(3), Update = "No newer stable release" }, args); return; }
         Output(release, args);
         if (startup)
         {
@@ -371,11 +372,9 @@ internal sealed partial class Application(Store store, Engine engine)
             if (!string.Equals(Console.ReadLine(), "y", StringComparison.OrdinalIgnoreCase)) return;
         }
         else if (!install) return;
-        else Confirm("Download and install application update", args);
+        else Confirm("Download and update this application and installed side-by-side CLI/UI companions", args);
         if (!OperatingSystem.IsWindows()) throw new InvalidOperationException("Install updates on Windows using the published executable.");
-        var directory = Path.Combine(store.Home, "updates", Format.Id());
-        var downloaded = await releases.Download(release, directory);
-        UpdateHost.Stage(store, downloaded, release);
+        await UpdateHost.Prepare(store, releases, release);
         exitForUpdate = true;
         Console.WriteLine("Update staged. Closing this session so the updater can replace and restart the application.");
     }

@@ -13,7 +13,9 @@ Download either interface from this repository's [GitHub Releases](https://githu
 
 Each is a self-contained executable with the .NET runtime included and an accompanying `.exe.sha256` checksum. Place it in a writable folder outside your game directories. Both interfaces are included from v0.2.0 onward.
 
-Version 0.3.1 adds compact portrait library cards and portrait-first thumbnails. The backup format remains schema 2; thumbnail-cache schema 1 is also unchanged.
+Keep the CLI and desktop executables in the same folder if you want either interface to update both together. Supported names are `optibackup.exe` / `optibackup-win-x64.exe` and `optibackup-ui.exe` / `optibackup-ui-win-x64.exe`. Updates include only recognized executables already present there; missing components and copies in other folders are not installed or updated.
+
+Version 0.3.1 adds compact portrait library cards, portrait-first thumbnails and shared CLI/desktop self-updates. The backup format remains schema 2; thumbnail-cache schema 1 is also unchanged.
 
 The examples below assume the executable is named `optibackup.exe`. Run from PowerShell:
 
@@ -50,7 +52,7 @@ Run `optibackup-ui-win-x64.exe` on Windows, or build it using the [desktop instr
 - In **Packages**, review/edit ZIP destinations and exclusions before import, then separately preview installation. Rename packages and roll back active layers with the same overlap ordering and edited-file protection as the CLI.
 - **Settings → Change location…** copies and verifies backup storage before switching locations and keeps the old copies. The settings page also opens/copies the backup path and opens app data. **Open backups** opens the current game's snapshot collection when available.
 
-Discovery, hashing and file operations run off the UI thread and are serialized. Startup attempts pending game-file recovery before opening the library. Operation errors appear inline with a dismiss action. **Release downloads** opens GitHub Releases in a browser; desktop self-update is not implemented. Automatic update checks/installations remain CLI-only. Other advanced settings, including archive limits, remain available through CLI `config` commands; close the desktop app before using them.
+Discovery, hashing and file operations run off the UI thread and are serialized. Startup attempts pending recovery before opening the library. Operation errors appear inline with a dismiss action. **Settings → Check updates** checks the latest stable release; **Install update…** displays the version, release notes and affected executables before download/confirmation/restart. **Release downloads** also opens GitHub Releases in a browser. Other advanced settings, including archive limits, remain available through CLI `config` commands; close the desktop app before using them.
 
 ### Thumbnail downloads and privacy
 
@@ -163,7 +165,7 @@ Custom scans group executable-bearing directories heuristically. Inspect the det
 
 ## Updates and configuration
 
-Interactive startup checks for a newer stable release at most once daily and asks before installation. Scripted commands, including piped `menu` sessions, do not run automatic checks. Offline/rate-limit failures do not block normal menu use.
+Desktop and interactive CLI startup checks share a once-daily schedule and the same update preference. Turn off **Settings → Check for updates at startup** or set `check-updates false` from the CLI to disable automatic checks in both interfaces. Manual checks remain available. Installation always requires confirmation; offline/rate-limit failures do not block local work. Scripted CLI commands, including piped `menu` sessions, do not run automatic checks.
 
 ```powershell
 .\optibackup.exe update check
@@ -178,7 +180,9 @@ Interactive startup checks for a newer stable release at most once daily and ask
 
 Changing the backup directory copies and verifies referenced snapshot files and blobs before switching the catalog, preserves snapshot read-only attributes, and retains old copies. Keep backup storage separate from game directories. `--home <folder>` selects a different catalog/data home, useful for isolated use or testing.
 
-The updater downloads this repository's stable Windows executable and SHA-256 checksum over HTTPS, waits for the app to exit, replaces the executable, checks startup health and restarts it. It retains a `.previous` copy beside the executable for failed-update rollback. Self-installation requires the published Windows x64 executable named `optibackup.exe` or `optibackup-win-x64.exe` in a writable location. It does not elevate permissions or update while game-file recovery is pending.
+The shared updater selects installed same-folder CLI/desktop components from one stable GitHub release and independently verifies each executable's SHA-256 checksum over HTTPS. It waits for the current session to exit, retains `.previous` copies, replaces the group and health-checks every component, including a WPF runtime/theme probe for the desktop. Failure or interrupted replacement rolls back the whole group. The initiating interface restarts with the same data home; snapshots and packages remain separate from the executables.
+
+Self-update requires published Windows x64 executables with the supported names in a writable folder. Close running companion copies first. Pending game/rename recovery blocks updates; permissions are not elevated. Development builds can check releases but cannot self-install. An up-to-date component can also bring an older same-folder companion to the same release.
 
 Checksums detect corruption; they are published beside the executable and are not independent signatures or protection against a compromised release account. There is no automatic mod download or system-driver installation.
 

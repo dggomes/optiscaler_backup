@@ -61,8 +61,8 @@ try {
     Invoke-Desktop -DataHome $testData -ImagePath $image
     $freshImage = Join-Path $images "fresh.png"
     Invoke-Desktop -DataHome (Join-Path $testRoot "empty-data") -ImagePath $freshImage
-    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
+    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.update.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
         if (-not (Test-Path $path) -or (Get-Item $path).Length -lt 1000) { throw "Desktop render missing/empty: $path" }
     }
-    Write-Host 'PASS desktop startup, pagination, global search, navigation, selection retention, offline actions, cached thumbnail display/preferences, recovery filtering and dialog rendering'
+    Write-Host 'PASS desktop startup, pagination, global search, navigation, selection retention, offline actions, cached thumbnail display/preferences, update controls/busy guard, recovery filtering and dialog rendering'
 } finally { Remove-Item $testRoot -Recurse -Force }

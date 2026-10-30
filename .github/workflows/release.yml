@@ -41,6 +41,14 @@ jobs:
           dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$env:RELEASE_VERSION -o artifacts/desktop
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./scripts/test-desktop.ps1 -Executable artifacts/desktop/optibackup-ui.exe -Cli artifacts/win-x64/optibackup.exe
+      - name: Download previous paired release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: PATH="/usr/bin:$PATH" gh release download v0.3.0 --repo "$GITHUB_REPOSITORY" --pattern '*.exe*' --dir artifacts/previous-pair
+      - name: Desktop and paired updater integration tests
+        shell: pwsh
+        run: ./scripts/test-desktop-updater.ps1 -Cli artifacts/win-x64/optibackup.exe -Desktop artifacts/desktop/optibackup-ui.exe -PreviousCli artifacts/previous-pair/optibackup-win-x64.exe -PreviousDesktop artifacts/previous-pair/optibackup-ui-win-x64.exe
       - name: Prepare release assets
         shell: pwsh
         run: |
