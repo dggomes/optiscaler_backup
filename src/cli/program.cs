@@ -96,7 +96,7 @@ internal sealed partial class Application(Store store, Engine engine)
           optibackup files add <game-id> <absolute-file> --external
           optibackup files remove <game-id> <root-id:relative-path>
           optibackup snapshots list <game-id>
-          optibackup snapshots create <game-id> <name> [--original --confirm-clean]
+          optibackup snapshots create <game-id> <name> [--original --confirm-clean] [--dry-run]
           optibackup snapshots rename <game-id> <snapshot-id> <name>
           optibackup restore <game-id> <snapshot-id> [--dry-run] [--yes]
           optibackup packages inspect <game-id> <zip>
@@ -224,8 +224,21 @@ internal sealed partial class Application(Store store, Engine engine)
             case "list": args.Count(3, 3); Output(game.Snapshots.Select(SnapshotOutput), args); break;
             case "create":
                 args.Count(4, 4);
-                if (args.Has("original")) Console.WriteLine("Original records current files. Confirm clean only if you know they are unmodified.");
-                Output(SnapshotOutput(engine.CreateSnapshot(game, args.At(3), args.Has("original"), args.Has("confirm-clean"))), args); break;
+                if (args.Has("original")) Console.Error.WriteLine("Original records current files. Confirm clean only if you know they are unmodified.");
+                var plan = engine.PrepareSnapshot(game);
+                if (args.Has("original"))
+                {
+                    var targets = plan.Targets.Concat(Detection.Files(game, Warn).Select(f => new Target("game", f.Path))).DistinctBy(t => t.Key).ToList();
+                    plan = plan with { Targets = targets };
+                }
+                if (args.Has("dry-run")) { Output(plan, args); break; }
+                var automatic = plan.Targets.Where(t => !game.Managed.Any(m => m.Key == t.Key)).ToList();
+                if (automatic.Count > 0)
+                {
+                    Console.Error.WriteLine("Additional inventory/detected files:\n" + string.Join("\n", automatic.Select(t => t.Root + ": " + t.Path)));
+                    Confirm("Capture these additional files alongside selected originals", args);
+                }
+                Output(SnapshotOutput(engine.CreateSnapshot(game, args.At(3), args.Has("original"), args.Has("confirm-clean"), plan)), args); break;
             case "rename":
                 args.Count(5, 5);
                 engine.RenameSnapshot(game, args.At(3), args.At(4)); break;

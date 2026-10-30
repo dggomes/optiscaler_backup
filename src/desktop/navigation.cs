@@ -43,22 +43,22 @@ public partial class MainWindow
         else if (e.Key == Key.Escape && page != Page.Library) { Library_Click(sender, e); e.Handled = true; }
         else if (e.Key == Key.F5) { Scan_Click(sender, e); e.Handled = true; }
     }
-    private async void ScanOptions_Click(object sender, RoutedEventArgs e) => await Guard("Scan folder", async () =>
+    private async void ScanOptions_Click(object sender, RoutedEventArgs e)
     {
         var folder = new OpenFolderDialog { Title = "Scan a game-library folder" };
         if (folder.ShowDialog(this) != true) return;
-        var warnings = new List<string>();
-        await Work("Scanning folder", () => { var discovery = new OptiScalerBackup.Windows.Discovery(warnings.Add); discovery.Merge(store, discovery.Custom(folder.FolderName)); });
-        if (warnings.Count > 0) ShowError(string.Join(" ", warnings.Take(3)));
-        await LoadArtwork(); StartThumbnails();
-    });
+        var directory = folder.FolderName;
+        await ScanSources("Scanning folder", discovery => discovery.Custom(directory));
+    }
     private async void ChangeLocation_Click(object sender, RoutedEventArgs e) => await Guard("Change backup location", async () =>
     {
         var picker = new OpenFolderDialog { Title = "Choose the new backup location" };
         if (picker.ShowDialog(this) != true) return;
         var dialog = new ConfirmationDialog(this, "Move backup storage", "All saved files are copied and verified before switching locations. Original copies are retained.",
             "Current location\n" + store.PayloadRoot + "\n\nNew location\n" + picker.FolderName, "Copy and switch location");
-        if (dialog.ShowDialog() == true) await Work("Copying and verifying backups", () => store.RelocatePayloads(picker.FolderName));
+        if (dialog.ShowDialog() != true) return;
+        var destination = picker.FolderName;
+        await Work("Copying and verifying backups", () => store.RelocatePayloads(destination));
     });
     private async void CopyBackupPath_Click(object sender, RoutedEventArgs e) => await Guard("Copy backup path", () =>
     { Clipboard.SetText(store.PayloadRoot); StatusText.Text = "Backup path copied."; return Task.CompletedTask; });

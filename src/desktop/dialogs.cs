@@ -77,7 +77,7 @@ internal sealed class NameDialog : ReviewDialog
     private readonly CheckBox original = new() { Content = "Establish as Original", Margin = new Thickness(0, 14, 0, 8) };
     private readonly CheckBox clean = new() { Content = "I confirm these files are clean / unmodified", Margin = new Thickness(0, 0, 0, 10) };
     public string Value { get; private set; } = "";
-    public bool Original => original.IsChecked == true;
+    public bool Original { get; private set; }
     public NameDialog(Window owner, string title, string value = "", bool offerOriginal = false, bool preferOriginal = false) : base(owner, title, "Use a name you will recognize when returning to this version.", "Save")
     {
         Width = 680; MinWidth = 620; Height = offerOriginal ? 360 : 280; MinHeight = offerOriginal ? 340 : 260;
@@ -85,11 +85,11 @@ internal sealed class NameDialog : ReviewDialog
         panel.Children.Add(new TextBlock { Text = "Name", Margin = new Thickness(0, 0, 0, 7) }); panel.Children.Add(name);
         if (offerOriginal) { panel.Children.Add(original); panel.Children.Add(clean); }
         Body.Children.Add(panel);
-        original.IsChecked = preferOriginal && offerOriginal; clean.IsEnabled = Original;
+        original.IsChecked = preferOriginal && offerOriginal; clean.IsEnabled = original.IsChecked == true;
         void Validate()
         {
-            clean.IsEnabled = Original;
-            ApproveButton.IsEnabled = !string.IsNullOrWhiteSpace(name.Text) && (!Original || clean.IsChecked == true);
+            clean.IsEnabled = original.IsChecked == true;
+            ApproveButton.IsEnabled = !string.IsNullOrWhiteSpace(name.Text) && (original.IsChecked != true || clean.IsChecked == true);
         }
         name.TextChanged += (_, _) => Validate(); original.Checked += (_, _) => Validate(); original.Unchecked += (_, _) => Validate();
         clean.Checked += (_, _) => Validate(); clean.Unchecked += (_, _) => Validate(); Validate();
@@ -97,8 +97,9 @@ internal sealed class NameDialog : ReviewDialog
     }
     protected override void Approve()
     {
-        Value = Format.Label(name.Text);
-        if (Original && clean.IsChecked != true) throw new InvalidOperationException("Confirm that the current files are clean before establishing Original.");
+        var selectedOriginal = original.IsChecked == true;
+        if (selectedOriginal && clean.IsChecked != true) throw new InvalidOperationException("Confirm that the current files are clean before establishing Original.");
+        Value = Format.Label(name.Text); Original = selectedOriginal;
     }
 
     internal override void CheckInteraction()
@@ -110,7 +111,9 @@ internal sealed class NameDialog : ReviewDialog
         if (!ApproveButton.IsEnabled) throw new InvalidOperationException("Clean Original cannot be saved.");
         name.Clear();
         if (ApproveButton.IsEnabled) throw new InvalidOperationException("Blank backup name accepted.");
-        name.Text = "Original"; clean.IsChecked = false;
+        name.Text = "Original"; clean.IsChecked = true; Approve();
+        if (!Task.Run(() => Original && Value == "Original").GetAwaiter().GetResult()) throw new InvalidOperationException("Approved Original values cannot be read by the background worker.");
+        clean.IsChecked = false;
     }
     public void ValidateLayout()
     {
@@ -139,7 +142,7 @@ internal sealed class FileReviewDialog : ReviewDialog
     private readonly Game game;
     public Game? Proposal { get; private set; }
     public FileReviewDialog(Window owner, Store store, Game game, IEnumerable<SelectionRow> candidates)
-        : base(owner, "Review managed files", "Selected files are included in future backups. Uncheck files to stop tracking them; saved backups remain intact. Add other files, then approve once. Review proxy identities and external paths before saving.", "Manage selected files")
+        : base(owner, "Review managed files", "Selected originals are copied. Later inventory backups also capture changes and previously tracked paths. Unchecking changes this selection; saved backups remain intact. Review proxies and external paths, then approve once.", "Manage selected files")
     {
         this.store = store; this.game = game;
         rows = new(game.Managed.Select(t => new SelectionRow { Path = t.Root == "game" ? t.Path : SafePaths.Resolve(game, t), Existing = t, Role = "Already managed", Evidence = "Included in future backups" }).Concat(candidates));
@@ -198,7 +201,7 @@ internal sealed class ChangeDialog : ReviewDialog
 {
     private readonly CheckBox option = new() { Margin = new Thickness(0, 15, 0, 0) };
     private readonly bool required;
-    public bool Option => option.IsChecked == true;
+    public bool Option { get; private set; }
     public ChangeDialog(Window owner, Game game, string title, string detail, List<Change> changes, string? requiredOption = null)
         : base(owner, title, detail + " A recovery snapshot is saved before changes.", "Confirm " + title.ToLowerInvariant())
     {
@@ -211,7 +214,14 @@ internal sealed class ChangeDialog : ReviewDialog
     }
     protected override void Approve()
     {
-        if (required && !Option) throw new InvalidOperationException("Explicitly approve the file conflict above, or cancel.");
+        var selected = option.IsChecked == true;
+        if (required && !selected) throw new InvalidOperationException("Explicitly approve the file conflict above, or cancel.");
+        Option = selected;
+    }
+    internal override void CheckInteraction()
+    {
+        option.IsChecked = required; Approve();
+        if (Task.Run(() => Option).GetAwaiter().GetResult() != required) throw new InvalidOperationException("Approved conflict options cannot be read by a worker.");
     }
 }
 

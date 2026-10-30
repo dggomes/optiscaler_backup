@@ -11,6 +11,10 @@ if (args.SequenceEqual(new[] { "--live-thumbnails" })) { await ThumbnailTests.Li
 
 var tests = new (string Name, Func<Task> Run)[]
 {
+    ("Prepared discovery merges without rescanning or overwriting concurrent backup metadata", () => Sync(InventoryTests.PreparedDiscovery)),
+    ("Inventory versions capture changes, deletions and proven original absence", () => Sync(InventoryTests.RoundTrip)),
+    ("Inventory rejects drift, corruption and future metadata without rewriting", () => Sync(InventoryTests.Safety)),
+    ("Inventory excludes links and detects upstream backup filename families", () => Sync(InventoryTests.LinksAndCoverage)),
     ("Snapshots restore exact managed state and preserve unrelated files", () => Sync(SnapshotRoundTrip)),
     ("Snapshot does not infer absence for files managed after capture", () => Sync(UnknownAbsence)),
     ("Snapshot folders contain readable read-only game and external files", () => Sync(SnapshotFolderLayout)),

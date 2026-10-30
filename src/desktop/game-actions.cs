@@ -10,13 +10,7 @@ namespace OptiScalerBackup.Desktop;
 public partial class MainWindow
 {
     private async void Scan_Click(object sender, RoutedEventArgs e) => await ScanLibrary();
-    private async Task ScanLibrary() => await Guard("Scan library", async () =>
-    {
-        var warnings = new List<string>();
-        await Work("Scanning installed launchers", () => { var discovery = new Discovery(warnings.Add); discovery.Merge(store, discovery.Scan([])); });
-        if (warnings.Count > 0) ShowError(string.Join(" ", warnings.Take(3)));
-        await LoadArtwork(); StartThumbnails();
-    });
+    private Task ScanLibrary() => ScanSources("Scanning installed launchers", discovery => discovery.Scan([]));
     private async void AddGame_Click(object sender, RoutedEventArgs e) => await Guard("Add game", async () =>
     {
         var folder = new OpenFolderDialog { Title = "Choose the game's installation folder" };
@@ -26,8 +20,8 @@ public partial class MainWindow
             throw new IOException("Keep game folders separate from application and backup storage.");
         var name = new NameDialog(this, "Add game", System.IO.Path.GetFileName(directory));
         if (name.ShowDialog() != true) return;
-        await Work("Adding game", () => new Discovery(TraceWarning).Merge(store, [new(name.Value, directory, "Manual")]));
-        await LoadArtwork(); StartThumbnails();
+        var label = name.Value;
+        await ScanSources("Adding game", _ => [new(label, directory, "Manual")]);
     });
 
     private void TraceWarning(string message) => System.Diagnostics.Trace.WriteLine(message);
@@ -35,7 +29,8 @@ public partial class MainWindow
     private async Task<bool> ReviewSelection(Game game)
     {
         var warnings = new List<string>();
-        var rows = await Work("Finding standard files", () => FindFiles(game, warnings.Add));
+        var rows = await AnalyzeFiles(game, warnings.Add);
+        if (busy || selectedId != game.Id || page != Page.Game) return false;
         if (warnings.Count > 0) ShowError(string.Join(" ", warnings.Take(3)));
         var dialog = new FileReviewDialog(this, store, game, rows);
         if (dialog.ShowDialog() != true || dialog.Proposal is not { } proposal) return false;
@@ -61,7 +56,18 @@ public partial class MainWindow
         if (Selected.Managed.Count == 0 && !await ReviewSelection(Selected)) return;
         var game = Selected;
         var dialog = new NameDialog(this, "Save backup", original ? "Original" : "", offerOriginal: !game.Snapshots.Any(s => s.Original), preferOriginal: original);
-        if (dialog.ShowDialog() == true) await Work("Saving backup", () => engine.CreateSnapshot(game, dialog.Value, dialog.Original, dialog.Original));
+        if (dialog.ShowDialog() != true) return;
+        var label = dialog.Value; var asOriginal = dialog.Original;
+        if (asOriginal)
+        {
+            var candidates = await AnalyzeFiles(game, null);
+            if (candidates.Count > 0 && !await ReviewSelection(game)) return;
+            game = store.Game(game.Id);
+        }
+        var plan = await Work("Inventorying game files", () => engine.PrepareSnapshot(game));
+        var review = new ConfirmationDialog(this, "Review backup", $"{plan.Inventory.Files.Count:N0} files inventoried · {plan.Targets.Count:N0} files tracked",
+            "The inventory records paths and hashes without copying the whole game. Selected originals and changed/new files are copied. Original bytes of unselected files cannot be recovered.\n\n" + string.Join("\n", plan.Targets.Select(t => t.Root + ": " + t.Path)), "Save backup");
+        if (review.ShowDialog() == true) await Work("Saving backup", () => engine.CreateSnapshot(store.Game(game.Id), label, asOriginal, asOriginal, plan));
     }
     private async void Restore_Click(object sender, RoutedEventArgs e) => await Guard("Restore version", async () =>
     {
@@ -91,7 +97,8 @@ public partial class MainWindow
         var picker = new OpenFileDialog { Title = "Select a ZIP package", Filter = "ZIP archives|*.zip", CheckFileExists = true };
         if (picker.ShowDialog(this) != true) return;
         var packages = new Packages(store);
-        var plan = await Work("Inspecting ZIP", () => packages.Inspect(game, picker.FileName));
+        var archive = picker.FileName;
+        var plan = await Work("Inspecting ZIP", () => packages.Inspect(game, archive));
         var dialog = new PackageReviewDialog(this, plan);
         if (dialog.ShowDialog() == true) await Work("Importing reviewed package", () => packages.Import(game, plan, dialog.PackageName, dialog.VersionLabel, dialog.Mappings));
     });
@@ -102,7 +109,9 @@ public partial class MainWindow
         var overlap = engine.ActiveOverlaps(game, package.Files.Select(f => f.Target));
         var dialog = new ChangeDialog(this, game, "Install package", $"Install {package.Name} / {package.Version}." + (overlap.Count > 0 ? " Replaces files used by: " + BlockerNames(game, overlap) : ""), preview,
             overlap.Count > 0 ? "Allow overlap with earlier layers; roll back in reverse order." : null);
-        if (dialog.ShowDialog() == true) await Work("Installing package", () => engine.Install(game, package, dialog.Option));
+        if (dialog.ShowDialog() != true) return;
+        var allowOverlap = dialog.Option;
+        await Work("Installing package", () => engine.Install(game, package, allowOverlap));
     });
     private async void Rollback_Click(object sender, RoutedEventArgs e) => await Guard("Roll back package", async () =>
     {
@@ -117,7 +126,9 @@ public partial class MainWindow
         var edits = await Work("Checking installed files", () => engine.Modified(game, installation));
         var dialog = new ChangeDialog(this, game, "Roll back package", $"Restore the state before {row.Name}. Newly added files will be removed.", preview,
             edits.Count > 0 ? "Override externally edited files after saving them to a recovery snapshot." : null);
-        if (dialog.ShowDialog() == true) await Work("Rolling back package", () => engine.Rollback(game, installation, dialog.Option));
+        if (dialog.ShowDialog() != true) return;
+        var overrideEdits = dialog.Option;
+        await Work("Rolling back package", () => engine.Rollback(game, installation, overrideEdits));
     });
     private async void RenamePackage_Click(object sender, RoutedEventArgs e) => await Guard("Rename package", async () =>
     {

@@ -41,7 +41,7 @@ public partial class MainWindow : Window
         thumbnails = new Thumbnails(thumbnailHttp, store.Home);
         InitializeComponent(); WindowChrome.Apply(this); Refresh();
         if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); await StartupUpdateCheck(); };
-        Closed += (_, _) => { thumbnailCancellation?.Cancel(); thumbnailHttp.Dispose(); };
+        Closed += (_, _) => { scanningCancellation.Cancel(); thumbnailCancellation?.Cancel(); thumbnailHttp.Dispose(); };
     }
 
     private static string CountLabel(int count, string label) => $"{count} {label}{(count == 1 ? "" : "s")}";
@@ -179,8 +179,8 @@ public partial class MainWindow : Window
         {
             if (!Directory.Exists(Selected.Directory)) return;
             var game = Selected; var warnings = new List<string>();
-            var found = await Work("Finding standard files", () => FindFiles(game, warnings.Add));
-            detectedCounts[game.Id] = found.Count; RefreshDetails();
+            var found = await AnalyzeFiles(game, warnings.Add);
+            detectedCounts[game.Id] = found.Count; if (selectedId == game.Id && page == Page.Game) RefreshDetails();
             if (warnings.Count > 0) ShowError(string.Join(" ", warnings.Take(3)));
         });
     }
@@ -205,6 +205,7 @@ public partial class MainWindow : Window
     private void EndWork()
     {
         busy = false; SetWorkspaceEnabled(true); BusyProgress.Visibility = Visibility.Collapsed; Refresh();
+        if (pendingDiscovery != null) ApplyDiscovery();
         if (thumbnailsPending) StartThumbnails(thumbnailsPendingRetry);
         if (updateCheckPending) { updateCheckPending = false; _ = StartupUpdateCheck(); }
     }
@@ -230,7 +231,8 @@ public partial class MainWindow : Window
             if (File.Exists(store.JournalPath)) await Work("Recovering interrupted operation", engine.Recover);
             await action();
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or InvalidDataException or System.Text.Json.JsonException or System.ComponentModel.Win32Exception)
+        catch (OperationCanceledException) when (scanningCancellation.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or InvalidDataException or System.Text.Json.JsonException or System.ComponentModel.Win32Exception or System.Net.Http.HttpRequestException or TaskCanceledException)
         {
             StatusText.Text = operation + " failed.";
             ShowError(error.Message);
@@ -322,8 +324,19 @@ public partial class MainWindow : Window
         finish.SetResult(); await asyncWork;
         if (busy) throw new InvalidOperationException("Updater did not release its busy guard.");
         ShowUpdate(null);
-        page = Page.Game; Refresh(); GameTabs.SelectedIndex = 0;
         var game = Selected;
+        var scanStarted = new TaskCompletionSource(); var finishScan = new ManualResetEventSlim();
+        var scan = ScanSources("Nonblocking scan test", _ => { scanStarted.SetResult(); finishScan.Wait(TimeSpan.FromSeconds(10)); return []; });
+        await scanStarted.Task;
+        if (busy || !Workspace.IsEnabled || !Navigation.IsEnabled) throw new InvalidOperationException("Library scanning blocks the app.");
+        var originalDialog = new NameDialog(this, "Save Original", "Original", offerOriginal: true, preferOriginal: true);
+        originalDialog.CheckInteraction(); var originalLabel = originalDialog.Value; var originalFlag = originalDialog.Original;
+        try { await Work("Saving Original after an earlier backup", () => engine.CreateSnapshot(store.Game(game.Id), originalLabel, originalFlag, originalFlag, engine.PrepareSnapshot(store.Game(game.Id)))); }
+        finally { finishScan.Set(); }
+        await scan; finishScan.Dispose();
+        if (store.Game(game.Id).Snapshots.Count(snapshot => snapshot.Original) != 1) throw new InvalidOperationException("Original creation after a regular backup failed.");
+        page = Page.Game; Refresh(); GameTabs.SelectedIndex = 0;
+        game = Selected;
         await RenderDialog(new FileReviewDialog(this, store, game, FindFiles(game)), screenshot + ".files.png");
         await RenderDialog(new NameDialog(this, "Save backup", "Original", offerOriginal: true, preferOriginal: true), screenshot + ".version.png");
         if (game.Snapshots.FirstOrDefault() is { } snapshot)

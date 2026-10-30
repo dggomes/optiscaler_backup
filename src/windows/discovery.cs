@@ -7,7 +7,7 @@ using OptiScalerBackup.Core;
 
 namespace OptiScalerBackup.Windows;
 
-public sealed record DiscoveredGame(string Name, string Directory, string Source);
+public sealed record DiscoveredGame(string Name, string Directory, string Source, List<string>? Executables = null);
 
 public sealed class Discovery(Action<string> warning)
 {
@@ -32,6 +32,22 @@ public sealed class Discovery(Action<string> warning)
         return found;
     }
 
+    public List<DiscoveredGame> Prepare(IEnumerable<DiscoveredGame> found, CancellationToken cancellation = default)
+    {
+        var result = new List<DiscoveredGame>();
+        var executables = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in found)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            var path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(item.Directory));
+            if (!Directory.Exists(path)) { result.Add(new(Format.Label(item.Name), path, item.Source)); continue; }
+            if (!executables.TryGetValue(path, out var files))
+                executables[path] = files = Directory.Exists(path) ? Detection.Executables(path, warning) : [];
+            result.Add(new(Format.Label(item.Name), path, item.Source, files));
+        }
+        return result;
+    }
+
     public void Merge(Store store, IEnumerable<DiscoveredGame> found)
     {
         foreach (var item in found)
@@ -44,7 +60,8 @@ public sealed class Discovery(Action<string> warning)
                 store.Data.Games.Add(game);
             }
             if (!game.Sources.Contains(item.Source)) game.Sources.Add(item.Source);
-            if (Directory.Exists(path)) game.Executables = Detection.Executables(path, warning);
+            if (item.Executables != null) game.Executables = item.Executables.ToList();
+            else if (Directory.Exists(path)) game.Executables = Detection.Executables(path, warning);
         }
         store.Save();
     }

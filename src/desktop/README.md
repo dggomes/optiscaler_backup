@@ -38,15 +38,17 @@ Steam downloads request `library_600x900.jpg` portraits first and try `header.jp
 - `Escape`: return from game/settings to the library.
 - `F5`: scan installed launchers.
 
-The library toolbar also scans a custom folder or adds a game manually. Library, game and settings are separate pages; changing the library search does not discard the current game.
+The library toolbar also scans a custom folder or adds a game manually. Launcher and folder scans run in the background while the app remains usable; their catalog merge waits for an active file operation to finish. Library, game and settings are separate pages; changing the library search does not discard the current game.
 
 ## Game workflows
 
-Opening a game detects standard-file candidates and reports how many are new. **Files → Review / add files…** presents current managed files and new candidates together, with proxy evidence and external paths. Add existing files or absent game-relative paths, uncheck files to stop tracking them for future captures, then approve once. Untracking does not alter historical snapshots.
+Opening a game detects standard-file candidates and reports how many are new. **Files → Review / add files…** presents current managed files and new candidates together, with proxy evidence and external paths. Rules include OptiScaler ASI/ReShade files, graphics-library families and companion configuration formats. Add existing files or absent game-relative paths, adjust the manual selection, then approve once. Historical targets and inventory-detected changes can still be included after unchecking; historical snapshots remain intact.
 
 The **Files** table separates **File name**, **Folder** and **Location**; game folders are relative, external settings retain their external folder. Hover filename/folder cells for the full path. **Filter files…** searches paths case-insensitively and shows matching/total counts; opening another game clears the filter.
 
-The setup guide offers file selection first, then **Save Original…** when no Original exists. The clean/unmodified assertion requires explicit confirmation. **Save backup** captures another named snapshot. **Backups** supports rename and restore previews; recovery snapshots are hidden until **Show recovery backups** is checked. Snapshot, package and installation selections persist through refreshes. Buttons needing a selected row are disabled until one is chosen; capture, install, restore and rollback also require an available game folder.
+The setup guide offers file selection first, then **Save Original…** when no Original exists. Original setup rechecks missing detected files and offers batch review even if a regular backup already exists; external paths are never approved automatically. The clean/unmodified assertion requires explicit confirmation. Before capture, the app inventories the entire game folder's regular files/hashes and folders, excludes links, and shows a **Review backup** confirmation with inventory/target counts and paths. Initial capture copies approved target bytes only; later snapshots compare against Original's inventory or the earliest available inventory, copy changed/new files, record deletions and carry prior targets so versions remain self-contained. Original cannot recover unselected original bytes; it removes only later-tracked additions proven absent by its inventory. Full-game hashing can take time, and changed game assets or game-local saves/logs/caches can increase backup size.
+
+**Backups** supports rename and restore previews; recovery snapshots are hidden until **Show recovery backups** is checked. Snapshot, package and installation selections persist through refreshes. Buttons needing a selected row are disabled until one is chosen; capture, install, restore and rollback also require an available game folder.
 
 **Show files** opens the selected snapshot's browsable full-copy folder. Files are read-only; edits are detected before restoration. Renaming uses a recovery journal so an interrupted rename can be rolled back safely.
 
@@ -54,7 +56,7 @@ The setup guide offers file selection first, then **Save Original…** when no O
 
 Game pages hide the global app masthead in favor of a compact title, library breadcrumb, counts, path and Original reminder. The header stays above tabs that fill the remaining window height. Tables scroll internally; there is no whole-game-page scroll. Compact 30-pixel rows, controls and review dialogs keep more files visible while retaining the clean-Original confirmation.
 
-Operations run off the UI thread, one at a time. Active work temporarily disables competing actions and prevents closing the window; errors are shown inline and can be dismissed. Startup recovery runs before normal work.
+Inventory capture and file mutations run off the UI thread, with mutations serialized. Active file work temporarily disables competing actions and prevents closing the window; background library scans remain separate and defer their merge when needed. Dialog values are captured on the UI thread before worker tasks use them, avoiding cross-thread dialog access. Errors are shown inline and can be dismissed. Startup recovery runs before normal work.
 
 ## Settings and storage
 
@@ -76,6 +78,7 @@ First opening a schema 1 catalog converts existing snapshots to schema 2 folders
 
 - `app.cs`: WPF entrypoint, catalog lock, startup recovery, shared updater helper/health entrypoints and startup/render smoke entrypoint.
 - `main-window.xaml` / `.xaml.cs`: library/search, pagination, selection state and serialized background work.
+- `scanning.cs`: background discovery/file analysis, cancellation and deferred catalog merging.
 - `navigation.cs` / `game-actions.cs`: library/settings navigation, storage relocation and game backup/package workflows.
 - `game-artwork.cs`: cached-download/local Steam cover and executable-icon loading with initials supplied by the library.
 - `thumbnails.cs`: catalog-wide background download scheduling, progress, retry and opt-out; matching/cache integrity belongs to the Windows adapter service.

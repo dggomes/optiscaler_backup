@@ -10,6 +10,8 @@
 - Preserve custom data-home paths on restart and archive completed updater jobs before restarting older binaries. Paired job format 2 retains compatibility with legacy single-CLI format 1 jobs.
 - Repair an older companion from the current stable release without downgrading a companion that is already newer.
 - Managed-file filtering and visible file counts, with separate filename/folder columns and full-path tooltips in the workspace and review dialogs.
+- Inventory-assisted backups record all game file paths, folder paths and file hashes without copying the entire game. Original stores the selected file bytes; later backups also include changed/new files, recorded deletions and previously tracked paths after review.
+- Original restoration removes later tracked additions only when its inventory proves those paths were absent. Inventory hashes cannot reconstruct original bytes of files that were not selected for backup.
 
 ### Changed
 
@@ -20,8 +22,15 @@
 - Reclaim game-workspace space by hiding repeated app branding, compacting the game header and Original guide, and letting tabs and tables fill the remaining window. File tables scroll internally instead of scrolling the entire game page; Original still requires explicit clean-state confirmation.
 - Use 30 px table rows, compact toolbars and review dialogs, and smaller naming forms to display more files at once.
 - Arrange Settings in two columns, with storage and artwork controls beside application updates.
+- Run launcher and custom-folder scans in the background while the app remains usable; apply scan results after any active file operation finishes.
+- Expand managed-file discovery to `OptiScaler.asi`, `ReShade64.dll`, ASI plugins, graphics-library filename families and companion YAML/XML files, with review before capture.
 
-Portrait-cache, paired-updater and workspace-layout coverage has been added, including a 54-file fixture, managed-file filtering and a minimum 340 px table-pane check. Validation of the latest native UI changes is pending. Real gaming-PC acceptance testing remains pending.
+### Fixed
+
+- Fix cross-thread WPF control access when establishing Original after an earlier backup.
+- Read approved package conflict/override options on the UI thread before background installation or rollback.
+
+Coverage includes portrait caches, paired updates, inventory-assisted backups and workspace layout, including a 54-file fixture, managed-file filtering and a minimum 340 px table-pane check. Validation of the latest changes is pending. Real gaming-PC acceptance testing remains pending.
 
 ## [0.3.0] — 2026-10-30
 

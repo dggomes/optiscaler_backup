@@ -24,19 +24,62 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         return snapshot;
     }
 
-    public Snapshot CreateSnapshot(Game game, string name, bool original, bool confirmedClean)
+    public Snapshot CreateSnapshot(Game game, string name, bool original, bool confirmedClean, SnapshotPlan? plan = null)
     {
         Ready(game);
         if (game.Managed.Count == 0) throw new InvalidOperationException("Select managed files before creating a snapshot.");
         if (original && (!confirmedClean || game.Snapshots.Any(s => s.Original)))
             throw new InvalidOperationException("Original requires --confirm-clean and can only be established once per game.");
-        var snapshot = Capture(game, game.Managed, name);
+        if (plan != null && plan.GameState != System.Text.Json.JsonSerializer.Serialize(game, Format.Json))
+            throw new IOException("Game selection changed after inventory review; prepare the backup again.");
+        var targets = plan?.Targets ?? game.Managed;
+        if (plan != null) VerifyInventoryTargets(game, plan);
+        var snapshot = Capture(game, targets, name);
         snapshot.Original = original;
         var next = Format.Clone(game);
         next.Snapshots.Add(snapshot);
-        try { store.Put(next); }
+        try
+        {
+            if (plan != null) { VerifyInventoryTargets(game, plan); store.SaveInventory(snapshot, plan.Inventory); }
+            store.Put(next);
+        }
         catch { store.RemoveOrphanSnapshot(snapshot); throw; }
         return snapshot;
+    }
+
+    public SnapshotPlan PrepareSnapshot(Game game)
+    {
+        Ready(game);
+        if (new[] { store.Home, store.PayloadRoot }.Any(path => path.Equals(game.Directory, StringComparison.OrdinalIgnoreCase) || SafePaths.Within(game.Directory, path)))
+            throw new IOException("Game inventory requires application storage outside the game folder.");
+        var inventory = GameInventory.Scan(game);
+        var baseline = game.Snapshots.Where(s => !s.Recovery).OrderByDescending(s => s.Original).ThenBy(s => s.Created)
+            .Select(s => store.Inventory(s)).FirstOrDefault(i => i != null);
+        var targets = game.Managed.ToDictionary(t => t.Key);
+        if (baseline != null)
+        {
+            var previous = baseline.Files.ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
+            foreach (var file in inventory.Files)
+                if (!previous.TryGetValue(file.Path, out var old) || old.Hash != file.Hash)
+                { var target = new Target("game", file.Path); targets[target.Key] = target; }
+            foreach (var file in baseline.Files)
+                if (inventory.ProvesAbsent(file.Path)) { var target = new Target("game", file.Path); targets[target.Key] = target; }
+            foreach (var file in game.Snapshots.Where(s => !s.Recovery).SelectMany(s => s.Files))
+                targets[file.Target.Key] = file.Target;
+        }
+        return new(inventory, targets.Values.ToList(), System.Text.Json.JsonSerializer.Serialize(game, Format.Json));
+    }
+
+    private static void VerifyInventoryTargets(Game game, SnapshotPlan plan)
+    {
+        var files = plan.Inventory.Files.ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
+        foreach (var target in plan.Targets.Where(t => t.Root == "game"))
+        {
+            var path = SafePaths.Resolve(game, target);
+            var current = SafePaths.FileExists(path) ? SafePaths.Hash(path) : null;
+            var expected = files.TryGetValue(target.Path, out var file) ? file.Hash : null;
+            if (current != expected) throw new IOException("Game files changed after inventory review: " + target.Path);
+        }
     }
 
     public void RenameSnapshot(Game game, string id, string name) => store.RenameSnapshot(game, id, name);
@@ -46,7 +89,14 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         if (!game.Snapshots.Any(s => s.Id == snapshot.Id)) throw new InvalidOperationException("Snapshot does not belong to this game.");
         // Missing metadata is unknown, not evidence of historical absence.
         // Only an explicit null hash authorizes deleting a tracked file.
-        return snapshot.Files.ToList();
+        var files = snapshot.Files.ToList();
+        if (snapshot.Original && store.Inventory(snapshot) is { } inventory)
+        {
+            var recorded = files.Select(f => f.Target.Key).ToHashSet();
+            foreach (var target in game.Snapshots.Where(s => !s.Recovery).SelectMany(s => s.Files).Select(f => f.Target).Where(t => t.Root == "game"))
+                if (recorded.Add(target.Key) && inventory.ProvesAbsent(target.Path)) files.Add(new(target, null, 0));
+        }
+        return files;
     }
 
     public List<Change> Preview(Game game, IEnumerable<FileState> desired)

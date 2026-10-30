@@ -10,6 +10,7 @@ Default home: `%LOCALAPPDATA%\OptiScalerBackup`. `--home <folder>` selects anoth
 | --- | --- |
 | `catalog.json` | Schema version, settings, games, approved roots, snapshot/package manifests and installation history |
 | `catalog.v1.json` | Original schema 1 catalog retained during conversion |
+| `game-inventories.json` | Auxiliary version 1 snapshot-ID-to-inventory-blob index |
 | `session.lock` | Exclusive process-wide session lock |
 | `pending.json` | Game-file transaction journal retained until commit/recovery finishes |
 | `rename-pending.json` | Snapshot-folder rename journal retained until catalog commit/recovery finishes |
@@ -57,13 +58,27 @@ A file state records `Target`, `Hash`, `Size` and optional `Payload`:
 
 A snapshot additionally records `Folder`, its readable folder relative to the payload root, plus ID/name/time and Original/recovery flags. Filesystem timestamps, original permissions and alternate data streams are not versioned; read-only attributes protect stored copies rather than defining restored game-file permissions.
 
-Original is a one-time user-confirmed designation, not proof of a pristine installation. Restoration uses only recorded targets. Explicit null hashes authorize removals; paths added to management after capture are preserved and listed as unrecorded in preview. Historical targets remain part of their snapshot after removal from the current managed selection.
+Original is a one-time user-confirmed designation, not proof of a pristine installation. Restoration uses recorded file states, including explicit absence. An inventory-backed Original may additionally remove targets captured in later named snapshots when the baseline inventory proves they were absent. It never infers absence beneath excluded links or from incomplete/missing inventory metadata. Unrelated paths remain untouched, and unselected original bytes cannot be reconstructed from hashes. Historical targets remain part of their snapshot after removal from the manual selection.
 
 A package records ID/name/version/time, source ZIP hash, reviewed entry-to-destination mappings, excluded entries and destination file states. Extracted blobs permit reinstallation without the ZIP. Import does not change game files.
 
 An installation records ID, package ID, install/rollback times, installed file states and the pre-install snapshot of affected destinations. That snapshot can also appear in the game's snapshot list; both copies reference the same snapshot folder. Active-layer dependencies derive from overlapping physical paths and history order. Roll back newer overlapping layers first. Snapshot restoration touching an active package layer is blocked.
 
 Local metadata is trusted application state, not a signed interchange format. Do not hand-edit it while the app is open or use another person's catalog as an installation package.
+
+## Inventory-assisted snapshots
+
+`game-inventories.json` has independent auxiliary schema **1**: `Version` and a `Snapshots` dictionary mapping snapshot IDs to SHA-256 inventory-blob hashes. The inventory itself is an immutable hash-verified blob under the configured payload root, with its own `Version: 1`, regular `Files` records (`Path`, `Hash`, `Size`, `LastWriteUtc`), `Folders` and `ExcludedLinks`. Inventory blobs travel with backup relocation; the index remains in the data home. Preserve both with the catalog. No catalog schema migration is required.
+
+Capture scans/hashes the whole game directory and checks that the tree remains stable; linked/junction entries are recorded as excluded rather than followed. This reads every regular file, so large games incur substantial I/O even when few bytes will be copied. External settings do not receive whole-directory inventory scans.
+
+The comparison baseline is Original's inventory when available, otherwise the earliest non-recovery snapshot with inventory. Without a baseline, capture copies only manually selected targets. With a baseline, the plan also includes new/content-changed regular game files, records baseline paths now proven absent, and carries targets from earlier non-recovery snapshots. Each saved version contains its own copies for every present target; it does not depend on replaying earlier snapshots. Selection is content-based, so changed game assets or game-local saves/logs/caches may be captured alongside mod files.
+
+The desktop reviews inventory/target counts and paths before saving; Original setup rechecks missing detection candidates and offers batch selection even after an earlier regular backup. The CLI adds detected in-game files to Original's plan, lists any inferred targets beyond manual selection on stderr and requires confirmation (or explicit `--yes` for scripting). External settings retain explicit path approval. CLI `snapshots create --dry-run` returns the plan without copying a snapshot. Planned file hashes and game-selection state are rechecked during capture; changes require preparing the backup again.
+
+Inventories contain hashes, not original file bytes. If an original game file was not selected at baseline, later change detection can save its new bytes but cannot restore its earlier contents. Original cleanup applies only to later snapshot-tracked additions proven absent by its inventory; it never deletes arbitrary extra files. Legacy snapshots without an inventory retain their recorded-path semantics, and the first inventory-enabled capture establishes the comparison baseline for subsequent versions.
+
+Unchecking a file changes manual selection, but previously captured targets and inventory-detected differences can remain in later plans to keep versions self-contained. Historical copies remain intact. Empty directory entries support absence reasoning; they do not promise recreation of the entire game directory tree.
 
 ## Optional thumbnail cache
 

@@ -10,7 +10,7 @@ public static class Detection
 {
     private static readonly HashSet<string> Libraries = new(StringComparer.OrdinalIgnoreCase)
     {
-        "OptiScaler.dll", "OptiScaler.ini", "nvngx.dll", "nvngx_dlss.dll", "nvngx_dlssg.dll", "nvngx_dlssd.dll",
+        "OptiScaler.dll", "OptiScaler.asi", "OptiScaler.ini", "ReShade64.dll", "ReShade.ini", "ReShadePreset.ini", "amdxcffx64.dll", "nvngx.dll", "nvngx_dlss.dll", "nvngx_dlssg.dll", "nvngx_dlssd.dll",
         "libxess.dll", "libxess_dx11.dll", "libxess_fg.dll", "libxell.dll", "fakenvapi.dll", "fakenvapi.ini", "nvapi64.dll",
         "dlssg_to_fsr3_amd_is_better.dll", "dlssg_to_fsr3.dll", "dlssg_to_fsr3.ini", "dlss-enabler-headless.dll",
         "amd_fidelityfx_dx12.dll", "amd_fidelityfx_vk.dll", "amd_fidelityfx_loader_dx12.dll",
@@ -49,9 +49,12 @@ public static class Detection
                 var opti = evidence.Contains("OptiScaler", StringComparison.OrdinalIgnoreCase);
                 found.Add(new(relative, "proxy-dll", evidence.Length == 0 ? "Ambiguous proxy filename" : evidence, !opti));
             }
+            else if (Path.GetExtension(name).Equals(".asi", StringComparison.OrdinalIgnoreCase)
+                || (name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && new[] { "sl.", "nvngx", "libxess", "amd_fidelityfx" }.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))))
+                found.Add(new(relative, "mod-companion", "ASI plugin or graphics-library family; review before capture", true));
             else if (Configs.Contains(name)) found.Add(new(relative, "game-config", "Review game settings file", true));
             else if (relative.Split('/').Any(c => c.Equals("OptiScaler", StringComparison.OrdinalIgnoreCase) || c.Equals("D3D12_Optiscaler", StringComparison.OrdinalIgnoreCase))
-                && new[] { ".dll", ".ini", ".json", ".toml" }.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+                && new[] { ".dll", ".asi", ".ini", ".json", ".toml", ".yaml", ".yml", ".xml" }.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
                 found.Add(new(relative, "mod-companion", "Inside OptiScaler folder", true));
         }
         return found;

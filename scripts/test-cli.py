@@ -125,4 +125,24 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     assert next(g for g in catalog()['Games'] if g['Name'] == 'Cyberpunk 2077')['Managed'] == []
     unmatched = run('menu', input_text='3\nno-such-game\n*\nedg\n0\n0\n')
     assert 'No games match' in unmatched.stdout
+    # Review inferred originals/new files through the real CLI before approving writes.
+    inventory_game = root / 'Inventory game'
+    inventory_game.mkdir()
+    (inventory_game / 'OptiScaler.ini').write_text('clean')
+    (inventory_game / 'OptiScaler.asi').write_text('plugin')
+    inv_id = json.loads(run('games', 'add', 'Inventory game', str(inventory_game)).stdout)['Id']
+    run('files', 'add', inv_id, 'OptiScaler.ini')
+    plan = json.loads(run('snapshots', 'create', inv_id, 'Original', '--original', '--dry-run', '--json').stdout)
+    assert len(plan['Targets']) == 2
+    run('snapshots', 'create', inv_id, 'Original', '--original', '--confirm-clean', succeeds=False)
+    original = json.loads(run('snapshots', 'create', inv_id, 'Original', '--original', '--confirm-clean', '--yes').stdout)
+    assert len(original['Files']) == 2
+    assert (home / 'game-inventories.json').exists()
+    (inventory_game / 'custom.dat').write_text('new bytes')
+    inferred = json.loads(run('snapshots', 'create', inv_id, 'Modded', '--dry-run', '--json').stdout)
+    assert any(t['Path'] == 'custom.dat' for t in inferred['Targets'])
+    run('snapshots', 'create', inv_id, 'Modded', succeeds=False)
+    run('snapshots', 'create', inv_id, 'Modded', '--yes')
+    run('restore', inv_id, original['Id'], '--yes')
+    assert not (inventory_game / 'custom.dat').exists()
 print('PASS CLI end-to-end: backups, packages, game search, automatic bulk selection, extras, cancellation and validation')

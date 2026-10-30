@@ -47,13 +47,13 @@ Run `optibackup-ui-win-x64.exe` on Windows, or build it using the [desktop instr
 - Browse a dark library of compact 2:3 portrait cards, 72 games per page, with **All games**, **With backups** and **No backups** filters. Titles/status occupy one line; hover a card for the full game name. Search partial names across the whole library, ignoring case; clear search or reset filters when needed. Startup scans installed launchers, then checks the entire catalog for thumbnails in the background, including games outside the current page/filter.
 - Thumbnail downloads are free and need no API key. Installed Steam IDs are preferred; other titles use a unique exact normalized-name match through Steam's public storefront search, then a Steam CDN image. Some titles have no unique Steam match or available image: locally cached covers, executable icons or initials remain the fallback.
 - Use `Ctrl+F` for library search, `Escape` to return from a game/settings page, and `F5` to scan installed launchers. Scan custom folders or add games manually. Cards label unavailable drives; file-changing actions require an available game folder.
-- Opening a game detects new standard-file candidates and shows their count. **Files → Review / add files…** includes current selections and new candidates in one batch, with proxy evidence and external paths. Add existing files or absent relative paths; uncheck files to stop tracking them in future backups. Existing snapshots remain intact. The file table separates filenames, folders and locations; filter by filename/path, see matching counts, or hover for full paths. Switching games clears the file filter.
+- Opening a game detects new standard-file candidates and shows their count. **Files → Review / add files…** includes current selections and new candidates in one batch, with proxy evidence and external paths. Add existing files or absent relative paths; unchecking changes the manual selection, while inventory-detected changes and previously captured targets can still be included in later backups. Existing snapshots remain intact. The file table separates filenames, folders and locations; filter by filename/path, see matching counts, or hover for full paths. Switching games clears the file filter.
 - The setup guide helps choose files and establish a clean, user-confirmed **Original**. In **Backups**, save/rename versions, preview restoration, or use **Show files** to open the selected folder. Recovery backups are hidden by default; enable **Show recovery backups** to inspect them. Row selections survive refreshes, and selection-dependent actions stay disabled until a row is chosen.
 - In **Packages**, review/edit ZIP destinations and exclusions before import, then separately preview installation. Rename packages and roll back active layers with the same overlap ordering and edited-file protection as the CLI.
 - Game pages keep a compact heading, breadcrumb/counts, path and Original reminder above tables that fill the remaining height and scroll internally. The whole game page does not scroll. Compact controls and dialogs preserve the clean-Original confirmation.
 - **Settings → Change location…** copies and verifies backup storage before switching locations and keeps the old copies. Storage/thumbnails sit beside updates so their controls remain easy to reach. The settings page also opens/copies the backup path and opens app data. **Open backups** opens the current game's snapshot collection when available.
 
-Discovery, hashing and file operations run off the UI thread and are serialized. Startup attempts pending recovery before opening the library. Operation errors appear inline with a dismiss action. **Settings → Check updates** checks the latest stable release; **Install update…** displays the version, release notes and affected executables before download/confirmation/restart. **Release downloads** also opens GitHub Releases in a browser. Other advanced settings, including archive limits, remain available through CLI `config` commands; close the desktop app before using them.
+Launcher/folder discovery runs in the background while the app remains usable; completed scan results wait to merge if a file operation is active. Inventory hashing and file mutations also run off the UI thread, with mutations serialized. Startup attempts pending recovery before opening the library. Operation errors appear inline with a dismiss action. **Settings → Check updates** checks the latest stable release; **Install update…** displays the version, release notes and affected executables before confirmation, download and restart. **Release downloads** also opens GitHub Releases in a browser. Other advanced settings, including archive limits, remain available through CLI `config` commands; close the desktop app before using them.
 
 ### Thumbnail downloads and privacy
 
@@ -72,11 +72,13 @@ The app's network use is application updates plus optional thumbnail matching/do
 1. Scan installed launchers or add a game manually.
 2. Open the game to automatically detect new standard graphics libraries, proxy DLLs and settings not already managed. The detection flow also offers optional extra game-relative or absolute settings paths.
 3. Review the complete proposed batch, including evidence for ambiguous proxy DLLs and full external settings paths, then approve it once. There are no file-by-file approvals, and nothing is added to management before the batch confirmation. **Detect and select managed files** reruns the same flow. For mods not installed yet, include their expected relative paths while absent so Original records their absence.
-4. Create a named snapshot. Establish **Original** only when you know the current files are clean. Existing mods cannot be converted into pristine originals.
-5. Create more named snapshots after changing settings or libraries. Rename labels at any time.
+4. Create a named snapshot. Establish **Original** only when you know the current files are clean. Capture inventories the entire game folder's file paths/hashes and folders, excluding links, but the initial snapshot copies only approved target bytes. Original setup also checks for missing detected mod/graphics files: the desktop offers batch review, and the CLI adds in-game detection candidates to the plan for confirmation. External paths still require explicit approval. Existing mods cannot be converted into pristine originals.
+5. Create more named snapshots after changing settings or libraries. The app compares the game with Original's inventory, or the earliest available inventory, and copies changed/new files, records deletions and carries previously tracked targets into a self-contained version. The desktop shows the inventory/target counts and asks for confirmation before saving. Rename labels at any time.
 6. Preview and confirm restoration. A recovery snapshot is saved before changing files.
 
-Restores reproduce the selected state for tracked paths, including removing managed files absent from that version. Paths added to management after capture are preserved: missing metadata does not establish historical absence. Preview lists these unrecorded paths. Unrelated files remain untouched. Removing a path from the current managed list does not remove it from historical snapshots.
+Each capture reads and hashes the whole game, which can take significant time on large installations. Delta selection covers all changed game-folder files, not only recognized mod filenames; game updates or game-local saves/logs/caches can therefore increase later backup size. External settings remain explicitly selected targets.
+
+Restores reproduce recorded file states, including explicit absence. An inventory-backed Original can also remove additions captured in later named snapshots when its inventory proves those paths were absent. It cannot recover original bytes of files never selected/copied at the baseline. Unrelated or unproven paths remain untouched; links skipped by inventory never establish absence. Old snapshots without inventories retain their recorded-path behavior. Removing a path from the manual selection does not erase historical copies or prevent inventory-based inclusion later.
 
 Close the game before capture, installation or restoration. Access restrictions are reported; the app does not change permissions. Disconnected or unavailable approved settings roots stop the operation rather than being recorded as absent files. Restoring older DLLs can undo launcher updates, so inspect replacements after a game update.
 
@@ -93,7 +95,9 @@ $gameId = $game.Id
 .\optibackup.exe files detect $gameId --json
 .\optibackup.exe files add $gameId (Read-Host 'Game-relative settings or DLL path')
 .\optibackup.exe files add $gameId (Read-Host 'Absolute external settings file') --external
-.\optibackup.exe snapshots create $gameId Original --original --confirm-clean
+.\optibackup.exe snapshots create $gameId Original --original --confirm-clean --dry-run
+# After reviewing the plan, accept additional detected/inventory targets for scripting:
+.\optibackup.exe snapshots create $gameId Original --original --confirm-clean --yes
 .\optibackup.exe snapshots list $gameId --json
 $snapshotId = Read-Host 'Snapshot ID to restore'
 .\optibackup.exe restore $gameId $snapshotId --dry-run --json
@@ -101,6 +105,8 @@ $snapshotId = Read-Host 'Snapshot ID to restore'
 ```
 
 `--confirm-clean` is your assertion, not an automated cleanliness check. Original can be established once per game. General command output is JSON; menus provide human navigation. `--json` explicitly requests the same structured read/preview format. Errors and discovery warnings go to stderr. Run `optibackup help` for the full command list.
+
+`snapshots create --dry-run` hashes/scans the game and returns the inventory-assisted plan without creating a snapshot or copying payloads. When a normal capture includes inferred targets beyond the manual selection, the CLI lists them on stderr and asks for confirmation; omit `--yes` for that interactive review, or pass it only after reviewing the dry run.
 
 ## ZIP packages
 
@@ -163,6 +169,8 @@ Discovery uses local installation metadata; no launcher login or online library 
 Launcher metadata formats and installation layouts vary. Battle.net games without uninstall registration, Xbox libraries in nonstandard locations, or missing/changed launcher metadata may need custom scanning or manual registration. Restricted Xbox installs remain subject to Windows permissions. Inaccessible scan entries produce warnings. Disconnected installations stay in the catalog as unavailable; rescanning does not delete them.
 
 Custom scans group executable-bearing directories heuristically. Inspect the detected game root and manually add the correct folder if a collection is grouped incorrectly. File walking excludes links and has a bounded depth. Known configuration candidates in Documents/AppData are suggestions based on game/executable names; add unmatched files explicitly. Saves, logs and caches are not selected by detection.
+
+File rules include `OptiScaler.asi`, `ReShade64.dll`, ASI plugins and DLSS/Streamline/XeSS/AMD FidelityFX library families. OptiScaler companion-folder configuration candidates include INI, JSON, TOML, YAML and XML. These are candidates to review, not evidence that every similarly named file belongs to OptiScaler.
 
 ## Updates and configuration
 
