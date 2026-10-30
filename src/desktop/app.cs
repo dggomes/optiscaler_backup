@@ -33,6 +33,7 @@ public sealed class App : Application
                 ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterScreen,
                 Background = (System.Windows.Media.Brush)app.FindResource("Canvas"),
+                Foreground = (System.Windows.Media.Brush)app.FindResource("Ink"),
                 FontFamily = (System.Windows.Media.FontFamily)app.FindResource("BodyFont"),
                 Content = new System.Windows.Controls.StackPanel
                 {

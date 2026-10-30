@@ -42,6 +42,7 @@ public partial class MainWindow : Window
         if (!smoke) Loaded += async (_, _) => await LoadArtwork();
     }
 
+    private static string CountLabel(int count, string label) => $"{count} {label}{(count == 1 ? "" : "s")}";
     private static bool HasBackup(Game game) => game.Snapshots.Any(s => !s.Recovery);
     private static string Initials(string name) => string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => w.EnumerateRunes().First().ToString())).ToUpperInvariant();
     private static string FormatSize(long bytes) => bytes >= 1024 * 1024 ? $"{bytes / (1024d * 1024):0.#} MB" : bytes >= 1024 ? $"{bytes / 1024d:0.#} KB" : $"{bytes} B";
@@ -57,7 +58,7 @@ public partial class MainWindow : Window
             totalMatches = games.Count;
             pageIndex = Math.Clamp(pageIndex, 0, Math.Max(0, (games.Count - 1) / PageSize));
             var rows = games.Skip(pageIndex * PageSize).Take(PageSize).Select(g => new GameRow(g.Id, g.Name,
-                string.Join(" · ", g.Sources), !Directory.Exists(g.Directory) ? "Drive unavailable" : HasBackup(g) ? $"{g.Snapshots.Count(s => !s.Recovery)} saved backups" : "No backup yet",
+                string.Join(" · ", g.Sources), !Directory.Exists(g.Directory) ? "Drive unavailable" : HasBackup(g) ? CountLabel(g.Snapshots.Count(s => !s.Recovery), "saved backup") : "No backup yet",
                 Initials(g.Name), artwork.GetValueOrDefault(g.Id))).ToList();
             GameList.ItemsSource = rows; GameList.SelectedItem = rows.FirstOrDefault(g => g.Id == selectedId);
             LibraryCount.Text = $"{store.Data.Games.Count} games in library · {totalMatches} matching";
@@ -95,7 +96,7 @@ public partial class MainWindow : Window
         var online = Directory.Exists(game.Directory);
         AvailabilityText.Text = online ? "" : "Game folder unavailable. Reconnect its drive to back up, install or restore files.";
         var count = detectedCounts.GetValueOrDefault(game.Id);
-        SummaryText.Text = $"{game.Managed.Count} selected files · {game.Snapshots.Count(s => !s.Recovery)} backups · {game.Installations.Count(i => i.RolledBack == null)} active packages" + (count > 0 ? $" · {count} new files found" : "");
+        SummaryText.Text = $"{CountLabel(game.Managed.Count, "selected file")} · {CountLabel(game.Snapshots.Count(s => !s.Recovery), "backup")} · {CountLabel(game.Installations.Count(i => i.RolledBack == null), "active package")}" + (count > 0 ? $" · {count} new files found" : "");
         SetupGuide.Visibility = online && (game.Managed.Count == 0 || !game.Snapshots.Any(s => s.Original)) ? Visibility.Visible : Visibility.Collapsed;
         SetupTitle.Text = game.Managed.Count == 0 ? "Choose what to protect" : "Keep a clean starting point";
         SetupDescription.Text = game.Managed.Count == 0 ? "Review detected settings and libraries, add others if needed, then approve once." : "Save an Original backup before making changes. Confirm Original only when the current files are clean.";
@@ -235,6 +236,7 @@ public partial class MainWindow : Window
             if ((SnapshotList.SelectedItem as SnapshotRow)?.Id != id || !RestoreButton.IsEnabled) throw new InvalidOperationException("Refresh lost selection.");
         }
         await Capture(screenshot + ".game.png");
+        CheckTabs();
         GameTabs.SelectedIndex = 1; await Capture(screenshot + ".managed.png");
         GameTabs.SelectedIndex = 2; await Capture(screenshot + ".packages.png");
         var width = Width; var height = Height; Width = MinWidth; Height = MinHeight;
@@ -262,6 +264,29 @@ public partial class MainWindow : Window
             selectedId = offline.Id; page = Page.Game; Refresh();
             if (SaveBackupButton.IsEnabled || ImportPackageButton.IsEnabled || ReviewFilesButton.IsEnabled) throw new InvalidOperationException("Offline mutation actions enabled.");
             await Capture(screenshot + ".offline.png");
+        }
+    }
+
+    private void CheckTabs()
+    {
+        for (var i = 0; i < GameTabs.Items.Count; i++)
+        {
+            var tab = (TabItem)GameTabs.Items[i];
+            var presenter = FindPresenter(tab);
+            var label = new System.Windows.Media.FormattedText(tab.Header.ToString()!, System.Globalization.CultureInfo.CurrentUICulture,
+                FlowDirection.LeftToRight, new System.Windows.Media.Typeface(tab.FontFamily, tab.FontStyle, tab.FontWeight, tab.FontStretch),
+                tab.FontSize, (System.Windows.Media.Brush)FindResource("Ink"), 1);
+            if (presenter == null || presenter.ActualWidth + 1 < label.Width) throw new InvalidOperationException("Tab label is clipped: " + tab.Header);
+        }
+        static ContentPresenter? FindPresenter(DependencyObject parent)
+        {
+            for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is ContentPresenter presenter) return presenter;
+                if (FindPresenter(child) is { } found) return found;
+            }
+            return null;
         }
     }
 

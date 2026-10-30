@@ -13,6 +13,17 @@ function Invoke-Cli([string[]]$CommandArgs) {
     if ($LASTEXITCODE -ne 0) { throw "CLI fixture setup failed: $($CommandArgs -join ' ')" }
     return $output
 }
+function Invoke-Desktop([string]$DataHome, [string]$ImagePath) {
+    $process = Start-Process -FilePath $Executable -ArgumentList @('--home',('"'+${DataHome}+'"'),'--smoke-test',('"'+${ImagePath}+'"')) -PassThru
+    $null = $process.Handle
+    if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Desktop smoke test timed out' }
+    $process.Refresh()
+    if ($process.ExitCode -ne 0) {
+        if (Test-Path (${ImagePath}+'.error')) { Get-Content (${ImagePath}+'.error') | Write-Host }
+        throw "Desktop smoke exited with $($process.ExitCode)"
+    }
+}
+
 try {
     'quality=high' | Set-Content (Join-Path $testGame 'OptiScaler.ini')
     'dxgi test fixture' | Set-Content (Join-Path $testGame 'dxgi.dll')
@@ -36,15 +47,10 @@ try {
     $null = Invoke-Cli -CommandArgs @('games','add','Unavailable drive test',$offline)
     Move-Item $offline ($offline + '-disconnected')
     $image = Join-Path $images 'desktop.png'
-    $process = Start-Process -FilePath $Executable -ArgumentList @('--home',('"'+$testData+'"'),'--smoke-test',('"'+$image+'"')) -PassThru
-    $null = $process.Handle
-    if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Desktop smoke test timed out' }
-    $process.Refresh()
-    if ($process.ExitCode -ne 0) {
-        if (Test-Path ($image+'.error')) { Get-Content ($image+'.error') | Write-Host }
-        throw "Desktop smoke exited with $($process.ExitCode)"
-    }
-    foreach ($path in @($image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
+    Invoke-Desktop -DataHome $testData -ImagePath $image
+    $freshImage = Join-Path $images "fresh.png"
+    Invoke-Desktop -DataHome (Join-Path $testRoot "empty-data") -ImagePath $freshImage
+    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
         if (-not (Test-Path $path) -or (Get-Item $path).Length -lt 1000) { throw "Desktop render missing/empty: $path" }
     }
     Write-Host 'PASS desktop startup, pagination, global search, navigation, selection retention, offline actions, recovery filtering and dialog rendering'
