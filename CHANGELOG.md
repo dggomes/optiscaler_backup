@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.1] — 2026-10-30
+
+### Changed
+
+- Compact library cards use 112 × 168 portrait cover areas with 10 px gutters, a single-line title and status, and full game names in tooltips.
+- Increase the library page size from 24 to 72 games.
+- Request Steam's real `library_600x900.jpg` portrait artwork first; fall back to `header.jpg` only when the portrait is unavailable (HTTP 404).
+- Automatically refresh older landscape thumbnail caches using an optional `PortraitChecked` metadata field. Existing covers remain available offline; no catalog or cache-schema migration is required.
+
+Cache-upgrade and portrait-fallback coverage has been added. Windows rendering and library-density validation are pending. Real gaming-PC acceptance testing remains pending.
+
 ## [0.3.0] — 2026-10-30
 
 ### Added

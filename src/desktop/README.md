@@ -2,7 +2,7 @@
 
 WPF frontend for the shared .NET 10 core. It uses the same catalog and backups as the CLI, including package installation history. Only one session may open a data home at a time; close the CLI before starting the desktop app.
 
-Version 0.3.0 introduces a dark card library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick). The backup format remains schema 2, with an optional catalog preference for thumbnail downloads; this release does not add another storage migration.
+Version 0.3.1 uses a compact portrait library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick). Backup schema 2 and thumbnail-cache schema 1 remain unchanged; this release does not add another storage migration.
 
 ## Build and run
 
@@ -26,11 +26,11 @@ dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x6
 
 ## Library and navigation
 
-The library displays 24 cards per page. Search matches partial game names across every page, ignoring case. Use **All games**, **With backups** or **No backups** filters; clear search or reset the filters from an empty result. Click a card or select it and press Enter to open the game.
+The library displays 72 compact cards per page: 112-pixel widths, 168-pixel artwork (2:3), and 10-pixel gutters. Title/status rows stay on one line; truncated names remain available in the card tooltip. Search matches partial game names across every page, ignoring case. Use **All games**, **With backups** or **No backups** filters; clear search or reset the filters from an empty result. Click a card or select it and press Enter to open the game.
 
 At startup, the app scans installed launchers and queues thumbnail checks for the entire catalog, across all pages and filters. Background downloads use installed Steam manifest IDs where available; otherwise the game's title is sent to Steam's public storefront search. Only a unique exact normalized-title match is accepted. The provider is free/keyless and uses HTTPS Steam CDN JPEG images, but its search endpoint is undocumented and may change or rate-limit requests.
 
-Not every game exists on Steam or has a unique match/image. Downloaded thumbnails fall back to locally cached Steam covers, executable icons or name initials. Offline/service/rate-limit failures pause only the download queue; games and local backup operations remain usable. Unavailable game drives are labeled on cards and the game page.
+Steam downloads request `library_600x900.jpg` portraits first and try `header.jpg` only on 404. Not every game exists on Steam or has a unique match/image. Downloaded thumbnails fall back to locally cached Steam covers, executable icons or name initials. Offline/service/rate-limit failures pause only the download queue; games and local backup operations remain usable. Unavailable game drives are labeled on cards and the game page.
 
 - `Ctrl+F`: return to the library and focus search.
 - `Escape`: return from game/settings to the library.
@@ -55,6 +55,8 @@ The game workspace scrolls in compact windows to keep package tables and their a
 **Settings → Change location…** confirms the source/destination, copies and verifies snapshots/blobs, then switches the configured location. Old copies are retained. Other controls open the backup folder, copy its path or open app data. **Open backups** from a game opens that game's snapshot collection when it exists; elsewhere it opens the configured payload folder.
 
 **Download thumbnails automatically** is enabled by default; switch it off to stop future matching/download requests. Existing cached images remain available. **Refresh thumbnails** retries every catalog entry. Images live under `<home>/thumbnails`, separate from backup storage, with 4 MiB JPEG limits and SHA-256 verification. Successful entries are rechecked after 30 days; no-match entries after seven days. Moving backup storage does not relocate this cache. The same preference is available through CLI `config set download-thumbnails false` after closing the desktop app.
+
+Older cached headers receive a background portrait attempt even when still within the 30-day window. Existing images remain visible offline or when downloads are disabled. Cache metadata records that a portrait was attempted, not that the final image is necessarily a portrait; a missing portrait may still use the header fallback.
 
 **Release downloads** opens the repository's releases page; the desktop app does not automatically check for or install updates. Use CLI `config` for other advanced settings, such as archive limits, after closing the desktop app.
 

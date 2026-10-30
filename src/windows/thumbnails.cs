@@ -12,6 +12,7 @@ public sealed class ThumbnailRecord
     public DateTimeOffset Checked { get; set; }
     public int? AppId { get; set; }
     public string? Hash { get; set; }
+    public bool PortraitChecked { get; set; }
 }
 
 // Steam's public storefront endpoint needs no key. It is undocumented, so failures
@@ -42,16 +43,12 @@ public sealed class Thumbnails(HttpClient client, string home, TimeSpan? request
         var record = Read(game);
         var cached = Cached(game);
         var lifetime = cached != null ? TimeSpan.FromDays(30) : TimeSpan.FromDays(7);
-        if (!retry && record != null && (cached != null || record.Hash == null) && record.Checked > DateTimeOffset.UtcNow - lifetime) return cached;
+        if (!retry && record != null && (cached != null || record.Hash == null) && (record.PortraitChecked || record.Hash == null) && record.Checked > DateTimeOffset.UtcNow - lifetime) return cached;
         var appId = SteamAppId(game) ?? await Search(game.Name, cancellation);
-        if (appId == null) { Save(game, new() { AppId = record?.AppId, Hash = cached != null ? record?.Hash : null, Checked = DateTimeOffset.UtcNow }); return cached; }
-        using var response = await Get(new Uri($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appId}/header.jpg"), cancellation);
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        { Save(game, new() { AppId = appId, Hash = cached != null ? record?.Hash : null, Checked = DateTimeOffset.UtcNow }); return cached; }
-        response.EnsureSuccessStatusCode();
-        var data = await Bytes(response, ImageLimit, cancellation);
-        if (data.Length < 4 || data[0] != 0xff || data[1] != 0xd8 || data[2] != 0xff || data[^2] != 0xff || data[^1] != 0xd9)
-            throw new InvalidDataException("Thumbnail service returned an invalid JPEG.");
+        if (appId == null) { Save(game, new() { AppId = record?.AppId, Hash = cached != null ? record?.Hash : null, PortraitChecked = record?.PortraitChecked ?? false, Checked = DateTimeOffset.UtcNow }); return cached; }
+        var data = await Image(appId.Value, cancellation);
+        if (data == null)
+        { Save(game, new() { AppId = appId, Hash = cached != null ? record?.Hash : null, PortraitChecked = true, Checked = DateTimeOffset.UtcNow }); return cached; }
         SafePaths.NoLinks(root); Directory.CreateDirectory(root);
         var file = Path.Combine(root, Key(game) + ".jpg"); SafePaths.NoLinks(file);
         var temporary = file + "." + Format.Id() + ".tmp";
@@ -59,10 +56,25 @@ public sealed class Thumbnails(HttpClient client, string home, TimeSpan? request
         {
             await File.WriteAllBytesAsync(temporary, data, cancellation);
             cancellation.ThrowIfCancellationRequested(); File.Move(temporary, file, true);
-            Save(game, new() { AppId = appId, Hash = Convert.ToHexStringLower(SHA256.HashData(data)), Checked = DateTimeOffset.UtcNow });
+            Save(game, new() { AppId = appId, Hash = Convert.ToHexStringLower(SHA256.HashData(data)), PortraitChecked = true, Checked = DateTimeOffset.UtcNow });
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
         return file;
+    }
+
+    private async Task<byte[]?> Image(int appId, CancellationToken cancellation)
+    {
+        foreach (var asset in new[] { "library_600x900.jpg", "header.jpg" })
+        {
+            using var response = await Get(new Uri($"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appId}/{asset}"), cancellation);
+            if (response.StatusCode == HttpStatusCode.NotFound) continue;
+            response.EnsureSuccessStatusCode();
+            var data = await Bytes(response, ImageLimit, cancellation);
+            if (data.Length < 4 || data[0] != 0xff || data[1] != 0xd8 || data[2] != 0xff || data[^2] != 0xff || data[^1] != 0xd9)
+                throw new InvalidDataException("Thumbnail service returned an invalid JPEG.");
+            return data;
+        }
+        return null;
     }
 
     private ThumbnailRecord? Read(Game game)

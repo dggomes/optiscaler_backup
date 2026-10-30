@@ -41,7 +41,7 @@ internal static class ThumbnailTests
         File.WriteAllText(Path.Combine(apps, "appmanifest_321.acf"), "\"AppState\" { \"appid\" \"321\" \"installdir\" \"Installed Game\" }");
         var game = new Game { Name = "A renamed Steam game", Directory = folder };
         Check(Thumbnails.SteamAppId(game) == 321); var requests = 0;
-        using var http = new HttpClient(new FakeHttp(request => { requests++; Check(request.RequestUri!.AbsoluteUri == "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/321/header.jpg"); return Image(); }));
+        using var http = new HttpClient(new FakeHttp(request => { requests++; Check(request.RequestUri!.AbsoluteUri == "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/321/library_600x900.jpg"); return Image(); }));
         Check(await new Thumbnails(http, fixture.Home, TimeSpan.Zero).Download(game, false) != null && requests == 1);
         game.Directory = Path.Combine(fixture.Root, "missing", "steamapps", "common", "Disconnected");
         Check(Thumbnails.SteamAppId(game) == null);
@@ -90,6 +90,30 @@ internal static class ThumbnailTests
         await Fails(async () => await service.Download(fixture.Game, true));
         Check(File.ReadAllText(metadata) == "{\"Version\":999}");
     }
+    public static async Task PortraitUpgrade()
+    {
+        using var fixture = new Fixture(); var portraits = 0; var headers = 0; var missingPortrait = false;
+        using var http = new HttpClient(new FakeHttp(request =>
+        {
+            if (request.RequestUri!.Host == "store.steampowered.com") return Search((123, fixture.Game.Name));
+            if (request.RequestUri.AbsolutePath.EndsWith("library_600x900.jpg"))
+            { portraits++; return missingPortrait ? new(HttpStatusCode.NotFound) : Image(); }
+            headers++; return Image();
+        }));
+        var service = new Thumbnails(http, fixture.Home, TimeSpan.Zero);
+        var file = await service.Download(fixture.Game, false);
+        var metadata = Directory.GetFiles(Path.Combine(fixture.Home, "thumbnails"), "*.json").Single();
+        var legacy = Store.Read<ThumbnailRecord>(metadata); legacy.PortraitChecked = false; Store.Atomic(metadata, legacy);
+        using var offline = new HttpClient(new FakeHttp(_ => throw new HttpRequestException("offline")));
+        await Fails(async () => await new Thumbnails(offline, fixture.Home, TimeSpan.Zero).Download(fixture.Game, false));
+        Check(service.Cached(fixture.Game) == file);
+        Check(await service.Download(fixture.Game, false) == file && portraits == 2 && headers == 0);
+        Check(Store.Read<ThumbnailRecord>(metadata).PortraitChecked);
+        missingPortrait = true;
+        Check(await service.Download(fixture.Game, true) == file && portraits == 3 && headers == 1);
+        Check(await service.Download(fixture.Game, false) == file && portraits == 3 && headers == 1);
+    }
+
     public static async Task Live()
     {
         var home = Path.Combine(Directory.GetCurrentDirectory(), ".context", "live-thumbnails");

@@ -45,7 +45,7 @@ internal static class GameArtwork
         {
             SafePaths.NoLinks(file);
             var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.DecodePixelWidth = 320; bitmap.UriSource = new Uri(file); bitmap.EndInit(); bitmap.Freeze(); return bitmap;
+            bitmap.DecodePixelWidth = 240; bitmap.UriSource = new Uri(file); bitmap.EndInit(); bitmap.Freeze(); return bitmap;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException or ArgumentException)
         { Trace.WriteLine("Artwork decode failed: " + error.Message); return null; }

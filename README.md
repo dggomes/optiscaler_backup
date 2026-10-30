@@ -13,7 +13,7 @@ Download either interface from this repository's [GitHub Releases](https://githu
 
 Each is a self-contained executable with the .NET runtime included and an accompanying `.exe.sha256` checksum. Place it in a writable folder outside your game directories. Both interfaces are included from v0.2.0 onward.
 
-Version 0.3.0 refreshes the desktop library and workflows, including automatic thumbnails. The backup format remains schema 2; the catalog adds an optional thumbnail-download preference.
+Version 0.3.1 adds compact portrait library cards and portrait-first thumbnails. The backup format remains schema 2; thumbnail-cache schema 1 is also unchanged.
 
 The examples below assume the executable is named `optibackup.exe`. Run from PowerShell:
 
@@ -42,7 +42,7 @@ Opening v1 data automatically upgrades it to schema 2, retaining `catalog.v1.jso
 
 Run `optibackup-ui-win-x64.exe` on Windows, or build it using the [desktop instructions](src/desktop/README.md). It opens the same library, snapshots and package history as the CLI. Close other sessions using that catalog before launching it.
 
-- Browse a dark card library, 24 games per page, with **All games**, **With backups** and **No backups** filters. Search partial names across the whole library, ignoring case; clear search or reset filters when needed. Startup scans installed launchers, then checks the entire catalog for thumbnails in the background, including games outside the current page/filter.
+- Browse a dark library of compact 2:3 portrait cards, 72 games per page, with **All games**, **With backups** and **No backups** filters. Titles/status occupy one line; hover a card for the full game name. Search partial names across the whole library, ignoring case; clear search or reset filters when needed. Startup scans installed launchers, then checks the entire catalog for thumbnails in the background, including games outside the current page/filter.
 - Thumbnail downloads are free and need no API key. Installed Steam IDs are preferred; other titles use a unique exact normalized-name match through Steam's public storefront search, then a Steam CDN image. Some titles have no unique Steam match or available image: locally cached covers, executable icons or initials remain the fallback.
 - Use `Ctrl+F` for library search, `Escape` to return from a game/settings page, and `F5` to scan installed launchers. Scan custom folders or add games manually. Cards label unavailable drives; file-changing actions require an available game folder.
 - Opening a game detects new standard-file candidates and shows their count. **Files → Review files…** includes current selections and new candidates in one batch, with proxy evidence and external paths. Add existing files or absent relative paths; uncheck files to stop tracking them in future backups. Existing snapshots remain intact.
@@ -56,7 +56,7 @@ Discovery, hashing and file operations run off the UI thread and are serialized.
 
 Downloads are enabled by default. **Settings → Download thumbnails automatically** disables future image requests; **Refresh thumbnails** retries the catalog. Cached images remain usable offline. When no installed Steam ID is available, the game's name is sent to Steam for matching. The search endpoint is public and keyless but undocumented, so availability and rate limits can change. No match is guessed when several exact matches exist.
 
-Images are HTTPS JPEG downloads limited to 4 MiB and verified with SHA-256 in the local cache at `%LOCALAPPDATA%\OptiScalerBackup\thumbnails` (or `<home>/thumbnails` with `--home`). Successful results are rechecked after 30 days; no-match results after seven days. Offline/service/rate-limit failures pause image downloads without blocking backup, restore or package operations. Changing the backup location does not move this separate cache.
+Images are HTTPS JPEG downloads limited to 4 MiB and verified with SHA-256 in the local cache at `%LOCALAPPDATA%\OptiScalerBackup\thumbnails` (or `<home>/thumbnails` with `--home`). Steam's `library_600x900.jpg` portrait is requested first, with `header.jpg` fallback on 404. Older cached headers get a background portrait attempt without waiting for their normal 30-day refresh; existing images remain usable offline or with downloads disabled. Otherwise successful results are rechecked after 30 days and no-match results after seven days. Offline/service/rate-limit failures pause image downloads without blocking backup, restore or package operations. Changing the backup location does not move this separate cache.
 
 The app's network use is application updates plus optional thumbnail matching/downloads; game-file backup and package operations stay local. To disable thumbnail downloads from the CLI while the desktop app is closed:
 

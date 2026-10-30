@@ -59,7 +59,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Thumbnails use installed Steam IDs and retain disconnected games", ThumbnailTests.SteamIdentity),
     ("Thumbnails reject ambiguous and partial matches with negative caching", ThumbnailTests.Ambiguity),
     ("Thumbnails reject bad responses, unsafe redirects and honor cancellation", ThumbnailTests.Failures),
-    ("Unsupported thumbnail cache formats are retained without rewriting", ThumbnailTests.FutureCache)
+    ("Unsupported thumbnail cache formats are retained without rewriting", ThumbnailTests.FutureCache),
+    ("Portrait thumbnails refresh legacy covers and cache header fallbacks", ThumbnailTests.PortraitUpgrade)
 };
 var failed = 0;
 var skipped = 0;

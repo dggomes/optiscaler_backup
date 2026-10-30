@@ -72,9 +72,11 @@ Catalog schema 2 includes an optional `Settings.DownloadThumbnails` Boolean, def
 `<home>/thumbnails` is independent of `Settings.BackupDirectory`. Backup relocation does not copy/move it, and thumbnail data is not required to restore games. Entries use a SHA-256 key derived from the catalog game ID, name and installation directory:
 
 - `<key>.jpg`: downloaded JPEG, limited to 4 MiB and checked against its recorded SHA-256 before use.
-- `<key>.json`: independent thumbnail-cache schema **1**, with `Version`, UTC `Checked`, optional Steam `AppId` and optional image `Hash`. Metadata is bounded to 16 KiB; unknown cache versions are rejected without rewriting them.
+- `<key>.json`: independent thumbnail-cache schema **1**, with `Version`, UTC `Checked`, optional Steam `AppId`, optional image `Hash` and optional `PortraitChecked` (default `false`). Metadata is bounded to 16 KiB; unknown cache versions are rejected without rewriting them.
 
-Successful entries are rechecked after 30 days; no-match entries after seven days. Explicit **Refresh thumbnails** bypasses those freshness windows. Image replacement and metadata writes use temporary files; unavailable images retain local-cover/icon/initial fallbacks. Corrupt cached image bytes are rejected and may be downloaded again. Old valid images can still be displayed offline.
+Successful entries are rechecked after 30 days; no-match entries after seven days. A valid older image with `PortraitChecked: false` gets a background portrait refresh without waiting for that freshness window. `PortraitChecked` means a portrait request was attempted, not that the stored image is a portrait: Steam's `library_600x900.jpg` is requested first, with `header.jpg` fallback on 404. This optional field does not bump cache schema 1 or backup schema 2.
+
+Explicit **Refresh thumbnails** bypasses freshness windows. Image replacement and metadata writes use temporary files; unavailable images retain local-cover/icon/initial fallbacks. Corrupt cached image bytes are rejected and may be downloaded again. Old valid images remain usable offline or when downloads are disabled.
 
 The desktop attempts all catalog entries in the background, using an installed Steam ID or a unique exact normalized-title match. Unknown IDs send game names to Steam's public, undocumented search endpoint; image requests use HTTPS Steam CDN URLs. Requests need no API key. Search responses are limited to 1 MiB. Offline/rate-limit failures pause image requests rather than backup operations. Application updates and optional thumbnail matching/downloads are the app's network uses; snapshot/package operations remain local.
 

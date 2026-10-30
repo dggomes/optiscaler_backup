@@ -19,7 +19,7 @@ public sealed record ManagedRow(string Path, string Location);
 public partial class MainWindow : Window
 {
     private enum Page { Library, Game, Settings }
-    private const int PageSize = 24;
+    private const int PageSize = 72;
     private readonly Store store;
     private readonly Engine engine;
     private readonly bool smoke;
@@ -227,6 +227,7 @@ public partial class MainWindow : Window
             if (CachedThumbnail(store.Game(row.Id)) != null && row.Artwork == null) throw new InvalidOperationException("Cached thumbnail did not render.");
         if (GameList.Items.Count != Math.Min(count, PageSize)) throw new InvalidOperationException("Clearing search failed.");
         await Capture(screenshot);
+        if (count >= 7) CheckLibraryDensity();
         if (count == 0) return;
         if (count > PageSize)
         {
@@ -288,6 +289,16 @@ public partial class MainWindow : Window
             if (SaveBackupButton.IsEnabled || ImportPackageButton.IsEnabled || ReviewFilesButton.IsEnabled) throw new InvalidOperationException("Offline mutation actions enabled.");
             await Capture(screenshot + ".offline.png");
         }
+    }
+
+    private void CheckLibraryDensity()
+    {
+        var cards = Enumerable.Range(0, Math.Min(12, GameList.Items.Count)).Select(i => (ListBoxItem)GameList.ItemContainerGenerator.ContainerFromIndex(i)).ToList();
+        var firstY = cards[0].TranslatePoint(new Point(), GameList).Y;
+        var columns = cards.Count(card => Math.Abs(card.TranslatePoint(new Point(), GameList).Y - firstY) < 1);
+        if (columns < 7) throw new InvalidOperationException("Compact library must fit at least seven portrait cards per row.");
+        if (GameList.Items[0] is GameRow { Artwork: BitmapSource cover } && cover.PixelHeight <= cover.PixelWidth)
+            throw new InvalidOperationException("Expected a real portrait cover, not a cropped landscape thumbnail.");
     }
 
     private void CheckTabs()

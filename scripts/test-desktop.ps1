@@ -31,13 +31,13 @@ try {
     # Optional real image fixture; provider outages must not block local UI tests.
     $coverFile = Join-Path $testRoot 'steam-cover.jpg'
     try {
-        Invoke-WebRequest -Uri 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg' -OutFile $coverFile -TimeoutSec 15
+        Invoke-WebRequest -Uri 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1091500/library_600x900.jpg' -OutFile $coverFile -TimeoutSec 15
         $cache = Join-Path $testData 'thumbnails'
         New-Item -ItemType Directory -Path $cache -Force | Out-Null
         $identity = $game.Id + "`n" + $game.Name + "`n" + $game.Directory
         $key = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($identity))).ToLowerInvariant()
         Copy-Item $coverFile (Join-Path $cache ($key + '.jpg'))
-        @{ Version = 1; Checked = ([DateTimeOffset]::UtcNow).ToString('o'); AppId = 1091500; Hash = (Get-FileHash $coverFile -Algorithm SHA256).Hash.ToLowerInvariant() } | ConvertTo-Json | Set-Content (Join-Path $cache ($key + '.json')) -Encoding utf8
+        @{ Version = 1; Checked = ([DateTimeOffset]::UtcNow).ToString('o'); AppId = 1091500; PortraitChecked = $true; Hash = (Get-FileHash $coverFile -Algorithm SHA256).Hash.ToLowerInvariant() } | ConvertTo-Json | Set-Content (Join-Path $cache ($key + '.json')) -Encoding utf8
     } catch { Write-Host ('Optional live cover fixture unavailable: ' + $_.Exception.Message) }
     $null = Invoke-Cli -CommandArgs @('files','add',$game.Id,'OptiScaler.ini')
     $null = Invoke-Cli -CommandArgs @('snapshots','create',$game.Id,'Original','--original','--confirm-clean')
@@ -48,7 +48,7 @@ try {
     $package = ((Invoke-Cli -CommandArgs @('packages','list',$game.Id)) | ConvertFrom-Json).Packages[0]
     $null = Invoke-Cli -CommandArgs @('packages','install',$game.Id,$package.Id,'--yes')
     'quality=custom' | Set-Content (Join-Path $testGame 'OptiScaler.ini')
-    foreach ($index in 1..25) {
+    foreach ($index in 1..75) {
         $folder = Join-Path $testRoot ('library/game-' + $index)
         New-Item -ItemType Directory -Path $folder -Force | Out-Null
         $null = Invoke-Cli -CommandArgs @('games','add',('Library test ' + $index.ToString('00')),$folder)
