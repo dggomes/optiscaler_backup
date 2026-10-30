@@ -36,9 +36,12 @@ public sealed class App : Application
             };
             if (screenshot != null)
             {
-                window.ContentRendered += (_, _) =>
+                var captured = false;
+                window.ContentRendered += async (_, _) =>
                 {
-                    try { window.SmokeTest(screenshot); app.Shutdown(0); }
+                    if (captured) return;
+                    captured = true;
+                    try { await window.SmokeTest(screenshot); app.Shutdown(0); }
                     catch (Exception error) { File.WriteAllText(screenshot + ".error", error.ToString()); app.Shutdown(1); }
                 };
             }

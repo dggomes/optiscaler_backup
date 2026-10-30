@@ -12,13 +12,15 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         var snapshot = new Snapshot { Name = Format.Label(label), Recovery = recovery };
         var selected = targets.DistinctBy(t => t.Key).ToList();
         SafePaths.DistinctDestinations(selected.Select(t => SafePaths.Resolve(game, t)));
+        var sources = new List<(Target, string)>();
         foreach (var target in selected)
         {
             var path = SafePaths.Resolve(game, target);
             if (Directory.Exists(path)) throw new IOException($"Expected file, found directory: {path}");
-            var hash = SafePaths.FileExists(path) ? store.Capture(path) : null;
-            snapshot.Files.Add(new(target, hash, hash == null ? 0 : new FileInfo(store.Blob(hash)).Length));
+            snapshot.Files.Add(new(target, null, 0));
+            if (SafePaths.FileExists(path)) sources.Add((target, path));
         }
+        store.CaptureSnapshot(game, snapshot, sources);
         return snapshot;
     }
 
@@ -32,9 +34,12 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         snapshot.Original = original;
         var next = Format.Clone(game);
         next.Snapshots.Add(snapshot);
-        store.Put(next);
+        try { store.Put(next); }
+        catch { store.RemoveOrphanSnapshot(snapshot); throw; }
         return snapshot;
     }
+
+    public void RenameSnapshot(Game game, string id, string name) => store.RenameSnapshot(game, id, name);
 
     public List<FileState> SnapshotFiles(Game game, Snapshot snapshot)
     {
@@ -126,7 +131,7 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
     {
         if (!File.Exists(store.JournalPath)) return false;
         var journal = Store.Read<Journal>(store.JournalPath);
-        if (journal.SchemaVersion != Format.Version) throw new IOException("Unsupported recovery journal. Do not modify the game until recovery is resolved.");
+        if (!Store.SupportedSchema(journal.SchemaVersion)) throw new IOException("Unsupported recovery journal. Do not modify the game until recovery is resolved.");
         RequireAvailable(journal.BeforeGame);
         ensureStopped?.Invoke(journal.BeforeGame);
         Validate(journal.BeforeGame, journal.BeforeFiles.Files);
@@ -138,7 +143,11 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
             if (File.Exists(temp)) File.Delete(temp);
         }
         WriteFiles(journal.BeforeGame, journal.BeforeFiles.Files, false, journal.Id);
+        var recovery = store.Data.Games.SelectMany(g => g.Snapshots.Concat(g.Installations.Select(i => i.Before)))
+            .FirstOrDefault(s => s.Id == journal.BeforeFiles.Id) ?? journal.BeforeFiles;
+        store.ConvertLegacySnapshots(journal.BeforeGame);
         store.Put(journal.BeforeGame);
+        store.RemoveOrphanSnapshot(recovery);
         File.Delete(store.JournalPath);
         return true;
     }
@@ -155,7 +164,8 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
         next.Snapshots.Add(before);
         var journal = new Journal { BeforeGame = Format.Clone(game), BeforeFiles = before, Desired = desired };
         // Journal is durable before the first destination change; recovery always rolls back.
-        Store.Atomic(store.JournalPath, journal);
+        try { Store.Atomic(store.JournalPath, journal); }
+        catch { store.RemoveOrphanSnapshot(before); throw; }
         try
         {
             var drift = Preview(game, before.Files).Any(c => c.Action != "unchanged");
@@ -181,14 +191,14 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
             if (state.Hash == null) { if (SafePaths.FileExists(path)) File.Delete(path); }
             else
             {
-                store.Verify(state.Hash);
+                store.Verify(state);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 SafePaths.NoLinks(path);
                 var temp = path + ".optibackup-" + transactionId + ".tmp";
                 SafePaths.NoLinks(temp);
                 try
                 {
-                    using (var input = File.OpenRead(store.Blob(state.Hash)))
+                    using (var input = File.OpenRead(store.Payload(state)))
                     using (var output = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                     { input.CopyTo(output); output.Flush(true); }
                     if (SafePaths.Hash(temp) != state.Hash) throw new IOException("Staged file integrity check failed.");
@@ -213,8 +223,8 @@ public sealed class Engine(Store store, Action<Game>? ensureStopped = null)
                 throw new IOException("Game/settings destinations must not overlap application storage.");
             if (state.Hash != null)
             {
-                store.Verify(state.Hash);
-                if (new FileInfo(store.Blob(state.Hash)).Length != state.Size) throw new IOException("Payload length mismatch.");
+                store.Verify(state);
+                if (new FileInfo(store.Payload(state)).Length != state.Size) throw new IOException("Payload length mismatch.");
             }
         }
     }

@@ -4,6 +4,7 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import stat
 import tempfile
 import zipfile
 
@@ -78,6 +79,20 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     run('config', 'set', 'backup-directory', str(root / 'new-backups'), '--yes')
     run('restore', gid, sid, '--yes')
     assert (root / 'new-backups' / 'blobs').is_dir()
+    assert (root / 'new-backups' / 'snapshots').is_dir()
+    listed = json.loads(run('snapshots', 'list', gid, '--json').stdout)
+    assert pathlib.Path(listed[0]['FolderPath']).is_dir()
+    assert listed[0]['Files'][0]['Payload'].startswith('snapshots/')
+    backed_up = next(state for state in listed[0]['Files'] if state['Hash'])
+    payload = root / 'new-backups' / backed_up['Payload']
+    original_bytes, mode = payload.read_bytes(), payload.stat().st_mode
+    payload.chmod(mode | stat.S_IWRITE)
+    payload.write_bytes(b'edited backup')
+    rejected = run('restore', gid, sid, '--yes', succeeds=False)
+    assert 'modified payload' in rejected.stderr
+    assert (game / 'OptiScaler.ini').read_text() == 'original'
+    payload.write_bytes(original_bytes)
+    payload.chmod(mode)
     assert json.loads(run('games', 'list', '--json').stdout)[0]['Id'] == gid
     run('unknown-command', succeeds=False)
     run('config', 'set', 'check-updates', 'invalid', succeeds=False)

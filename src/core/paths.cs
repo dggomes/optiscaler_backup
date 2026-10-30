@@ -4,15 +4,29 @@ namespace OptiScalerBackup.Core;
 
 public static class SafePaths
 {
-    public static string Relative(string path)
+    public static string Relative(string path, int maxLength = 240)
     {
         path = path.Replace('\\', '/');
         var pieces = path.Split('/');
-        if (string.IsNullOrWhiteSpace(path) || path.StartsWith('/') || path.Length > 240 ||
+        if (string.IsNullOrWhiteSpace(path) || path.StartsWith('/') || path.Length > maxLength ||
             pieces.Any(p => p is "" or "." or ".." || p.EndsWith('.') || p.EndsWith(' ') ||
                 p.Any(c => c < 32 || "<>:\"|?*".Contains(c)) || IsDevice(p)))
             throw new InvalidOperationException($"Unsafe Windows relative path: {path}");
         return string.Join('/', pieces);
+    }
+
+    public static string FolderName(string name, int max = 40)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(max, 1);
+        var safe = new string(name.Select(c => char.IsControl(c) || "<>:\"/\\|?*".Contains(c) ? '_' : c).ToArray()).TrimEnd('.', ' ');
+        if (safe.Length == 0) safe = "Unnamed";
+        if (IsDevice(safe)) safe = "_" + safe;
+        if (safe.Length > max) safe = safe[..max];
+        if (safe.Length > 0 && char.IsHighSurrogate(safe[^1])) safe = safe[..^1];
+        safe = safe.TrimEnd('.', ' ');
+        if (safe.Length == 0) safe = "_";
+        if (IsDevice(safe)) safe = ("_" + safe)[..Math.Min(max, safe.Length + 1)];
+        return safe;
     }
 
     private static bool IsDevice(string part)

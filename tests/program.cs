@@ -11,6 +11,16 @@ var tests = new (string Name, Func<Task> Run)[]
 {
     ("Snapshots restore exact managed state and preserve unrelated files", () => Sync(SnapshotRoundTrip)),
     ("Snapshot does not infer absence for files managed after capture", () => Sync(UnknownAbsence)),
+    ("Snapshot folders contain readable read-only game and external files", () => Sync(SnapshotFolderLayout)),
+    ("Unsafe display names become safe bounded folder names", () => Sync(UnsafeNames)),
+    ("Schema 1 snapshots upgrade once and preserve restore/rollback", () => Sync(UpgradeFromV1)),
+    ("Failed upgrade leaves schema 1 unchanged and can resume", () => Sync(UpgradeFailureKeepsV1)),
+    ("Pending schema 1 journal recovery preserves schema 2 metadata", () => Sync(PendingV1Journal)),
+    ("Snapshot rename moves files and synchronizes installation backups", () => Sync(RenameMovesFolder)),
+    ("Interrupted snapshot rename rolls back folder and metadata", () => Sync(InterruptedRename)),
+    ("Failed writes remove orphan recovery snapshot folders", () => Sync(FailedOperationRemovesRecoveryFolder)),
+    ("Recovery after schema 1 catalog commit removes converted orphan", () => Sync(PendingV1AfterCommit)),
+    ("Snapshot copies remain independent and relocation preserves read-only files", () => Sync(IndependentCopiesAndMove)),
     ("Original requires clean confirmation and cannot be replaced", () => Sync(OriginalGuard)),
     ("Maximum-length labels remain usable during recovery capture", () => Sync(LongLabels)),
     ("External settings restore under explicitly approved roots", () => Sync(ExternalSettings)),
@@ -146,8 +156,10 @@ static void Corruption()
     using var f = new Fixture(); f.Write("a.dll", "before"); f.Game.Managed = [T("a.dll")];
     var snapshot = f.Engine.CreateSnapshot(f.Game, "A", false, false);
     f.Write("a.dll", "current");
-    File.WriteAllText(f.Store.Blob(snapshot.Files[0].Hash!), "corrupt");
-    Throws(() => f.Engine.Restore(f.Current, snapshot), "corrupt"); Equal("current", f.Read("a.dll")); True(!File.Exists(f.Store.JournalPath));
+    var payload = f.Store.Payload(snapshot.Files[0]);
+    File.SetAttributes(payload, File.GetAttributes(payload) & ~FileAttributes.ReadOnly);
+    File.WriteAllText(payload, "corrupt");
+    Throws(() => f.Engine.Restore(f.Current, snapshot), "modified"); Equal("current", f.Read("a.dll")); True(!File.Exists(f.Store.JournalPath));
 }
 static void TransactionalFailure()
 {
@@ -191,7 +203,7 @@ static void EditedFiles()
     Throws(() => f.Engine.Rollback(f.Current, install, false), "changed"); Equal("edited", f.Read("a.ini"));
     f.Engine.Rollback(f.Current, install, true); Equal("old", f.Read("a.ini"));
     var recovery = f.Current.Snapshots.Last();
-    Equal("edited", File.ReadAllText(f.Store.Blob(recovery.Files[0].Hash!)));
+    Equal("edited", File.ReadAllText(f.Store.Payload(recovery.Files[0])));
     Throws(() => f.Engine.Rollback(f.Current, f.Current.Installations[0], true), "already");
 }
 static void SnapshotPackageConflict()
@@ -413,6 +425,152 @@ static void PhysicalOverlap()
     Throws(() => f.Engine.Restore(f.Current, snapshot), "overlap"); Equal("new", f.Read("a.ini"));
 }
 
+static void SnapshotFolderLayout()
+{
+    using var f = new Fixture(); f.Write("bin/OptiScaler.ini", "config");
+    var settings = System.IO.Path.Combine(f.Root, "User Settings"); Directory.CreateDirectory(settings);
+    File.WriteAllText(System.IO.Path.Combine(settings, "graphics.ini"), "graphics");
+    f.Game.ExternalRoots["settings"] = settings;
+    f.Game.Managed = [T("bin/OptiScaler.ini"), T("dxgi.dll"), new("settings", "graphics.ini")];
+    var snapshot = f.Engine.CreateSnapshot(f.Game, "Original", true, true);
+    True(snapshot.Folder!.StartsWith("snapshots/Fixture Game ("));
+    Equal("config", File.ReadAllText(System.IO.Path.Combine(f.Store.SnapshotPath(snapshot), "game", "bin", "OptiScaler.ini")));
+    var external = snapshot.Files.Single(x => x.Target.Root == "settings");
+    True(external.Payload!.Contains("User Settings (settings)")); Equal("graphics", File.ReadAllText(f.Store.Payload(external)));
+    foreach (var state in snapshot.Files.Where(x => x.Hash != null)) True((File.GetAttributes(f.Store.Payload(state)) & FileAttributes.ReadOnly) != 0);
+    Equal<string?>(null, snapshot.Files.Single(x => x.Target.Path == "dxgi.dll").Payload);
+    True(!Directory.Exists(System.IO.Path.Combine(f.Store.PayloadRoot, "blobs")), "Snapshots must not create content-addressed blobs.");
+}
+static void UnsafeNames()
+{
+    using var f = new Fixture(); f.Write("a.ini", "data"); f.Game.Managed = [T("a.ini")];
+    foreach (var name in new[] { "CON", "a<b>:c", new string('x', 160), new string('x', 39) + "😀" })
+    {
+        f.Current.Name = name;
+        var snapshot = f.Engine.CreateSnapshot(f.Current, name, false, false);
+        True(Directory.Exists(f.Store.SnapshotPath(snapshot)));
+        var segment = SafePaths.FolderName(name);
+        True(segment.Length <= 40 && !char.IsHighSurrogate(segment[^1])); SafePaths.Relative(segment);
+    }
+    Equal("_CON", SafePaths.FolderName("CON")); Equal("a_b__c", SafePaths.FolderName("a<b>:c"));
+    Equal("_CO", SafePaths.FolderName("CONsole", 3));
+}
+static Snapshot LegacySnapshot(Fixture f, string name = "Original")
+{
+    f.Write("a.ini", name); f.Game.Managed = [T("a.ini")];
+    var state = new FileState(T("a.ini"), f.Store.Capture(f.Path("a.ini")), new FileInfo(f.Path("a.ini")).Length);
+    var snapshot = new Snapshot { Name = name, Files = [state] };
+    f.Game.Snapshots.Add(snapshot);
+    return snapshot;
+}
+static string SaveV1(Fixture f)
+{
+    f.Store.Data.SchemaVersion = 1; f.Store.Save();
+    var text = File.ReadAllText(System.IO.Path.Combine(f.Home, "catalog.json"));
+    f.Store.Dispose(); return text;
+}
+static void UpgradeFromV1()
+{
+    using var f = new Fixture(); var before = LegacySnapshot(f);
+    var package = f.Package("Mod", ("a.ini", "mod"));
+    var game = f.Current;
+    game.Installations.Add(new() { PackageId = package.Id, Before = Format.Clone(before), Installed = package.Files.ToList() });
+    f.Write("a.ini", "mod"); var oldText = SaveV1(f);
+    using var upgraded = new Store(f.Home); var migrated = upgraded.Game(game.Id);
+    Equal(2, upgraded.Data.SchemaVersion); Equal(oldText, File.ReadAllText(System.IO.Path.Combine(f.Home, "catalog.v1.json")));
+    Equal(migrated.Snapshots[0].Folder, migrated.Installations[0].Before.Folder);
+    Equal(1, Directory.GetDirectories(upgraded.StoragePath(upgraded.GameSnapshotFolder(migrated))).Length);
+    True(File.Exists(upgraded.Blob(before.Files[0].Hash!)), "Upgrade must retain old blobs.");
+    True(migrated.Packages[0].Files.All(x => x.Payload == null), "Package data stays in blobs.");
+    var engine = new Engine(upgraded); engine.Rollback(migrated, migrated.Installations[0], false); Equal("Original", f.Read("a.ini"));
+    f.Write("a.ini", "changed"); engine.Restore(upgraded.Game(game.Id), upgraded.Game(game.Id).Snapshots[0]); Equal("Original", f.Read("a.ini"));
+}
+static void UpgradeFailureKeepsV1()
+{
+    using var f = new Fixture(); LegacySnapshot(f, "Good"); var bad = LegacySnapshot(f, "Bad");
+    var payload = f.Store.Blob(bad.Files[0].Hash!); var bytes = File.ReadAllBytes(payload); File.WriteAllText(payload, "corrupt");
+    var original = SaveV1(f);
+    Throws(() => { using var failed = new Store(f.Home); }, "modified");
+    Equal(original, File.ReadAllText(System.IO.Path.Combine(f.Home, "catalog.json")));
+    Equal(1, Store.Read<Catalog>(System.IO.Path.Combine(f.Home, "catalog.json")).SchemaVersion);
+    File.WriteAllBytes(payload, bytes);
+    using var resumed = new Store(f.Home);
+    Equal(2, resumed.Data.SchemaVersion);
+    Equal(2, Directory.GetDirectories(resumed.StoragePath(resumed.GameSnapshotFolder(resumed.Game(f.Game.Id)))).Length);
+}
+static void PendingV1Journal()
+{
+    using var f = new Fixture(); var original = LegacySnapshot(f);
+    var beforeFiles = new Snapshot { Name = "Pending recovery", Recovery = true, Files = original.Files.ToList() };
+    Store.Atomic(f.Store.JournalPath, new Journal { SchemaVersion = 1, BeforeGame = Format.Clone(f.Game), BeforeFiles = beforeFiles });
+    f.Write("a.ini", "partially changed"); SaveV1(f);
+    using var reopened = new Store(f.Home); True(new Engine(reopened).Recover());
+    Equal("Original", f.Read("a.ini")); Equal(2, reopened.Data.SchemaVersion);
+    True(reopened.Game(f.Game.Id).Snapshots.All(s => s.Folder != null && s.Files.All(x => x.Hash == null || x.Payload != null)));
+    Equal(2, Store.Read<Catalog>(System.IO.Path.Combine(f.Home, "catalog.json")).SchemaVersion);
+}
+static void RenameMovesFolder()
+{
+    using var f = new Fixture(); f.Write("a.ini", "original"); var package = f.Package("A", ("a.ini", "mod"));
+    var install = f.Engine.Install(f.Current, package, false); var snapshot = f.Current.Snapshots[0]; var old = f.Store.SnapshotPath(snapshot);
+    f.Engine.RenameSnapshot(f.Current, snapshot.Id, "Working baseline");
+    var renamed = f.Current.Snapshots.Single(s => s.Id == snapshot.Id);
+    True(!Directory.Exists(old)); True(f.Store.SnapshotPath(renamed).Contains("Working baseline"));
+    Equal(renamed.Folder, f.Current.Installations[0].Before.Folder);
+    True(f.Current.Installations[0].Before.Files.All(x => x.Hash == null || x.Payload!.StartsWith(renamed.Folder + "/")));
+    f.Engine.Rollback(f.Current, install, false); Equal("original", f.Read("a.ini"));
+}
+static void InterruptedRename()
+{
+    using var f = new Fixture(); f.Write("a.ini", "original"); f.Game.Managed = [T("a.ini")];
+    var snapshot = f.Engine.CreateSnapshot(f.Game, "Original", false, false); var before = Format.Clone(f.Current);
+    var oldFolder = snapshot.Folder!; var newFolder = oldFolder + " moved";
+    Store.Atomic(f.Store.RenameJournalPath, new RenameJournal { BeforeGame = before, OldFolder = oldFolder, NewFolder = newFolder });
+    Directory.Move(f.Store.StoragePath(oldFolder), f.Store.StoragePath(newFolder));
+    var after = Format.Clone(f.Current); after.Snapshots[0].Folder = newFolder;
+    after.Snapshots[0].Files = after.Snapshots[0].Files.Select(x => x with { Payload = x.Payload?.Replace(oldFolder, newFolder) }).ToList();
+    f.Store.Put(after); f.Store.Dispose();
+    using var reopened = new Store(f.Home);
+    Equal(oldFolder, reopened.Game(f.Game.Id).Snapshots[0].Folder); True(Directory.Exists(reopened.StoragePath(oldFolder)));
+    True(!Directory.Exists(reopened.StoragePath(newFolder))); True(!File.Exists(reopened.RenameJournalPath));
+}
+static void FailedOperationRemovesRecoveryFolder()
+{
+    using var f = new Fixture(); f.Write("a.ini", "original"); var package = f.Package("A", ("a.ini", "new"));
+    f.Engine.AfterWrite = _ => throw new IOException("Injected failure");
+    Throws(() => f.Engine.Install(f.Current, package, false), "rolled back");
+    Equal(0, f.Current.Snapshots.Count);
+    Equal(0, Directory.GetDirectories(f.Store.StoragePath(f.Store.GameSnapshotFolder(f.Current))).Length);
+    Equal("original", f.Read("a.ini"));
+}
+
+static void PendingV1AfterCommit()
+{
+    using var f = new Fixture(); var original = LegacySnapshot(f); var beforeGame = Format.Clone(f.Game);
+    var recovery = new Snapshot { Name = "Recovery", Recovery = true, Files = original.Files.ToList() };
+    f.Game.Snapshots.Add(recovery);
+    Store.Atomic(f.Store.JournalPath, new Journal { SchemaVersion = 1, BeforeGame = beforeGame, BeforeFiles = Format.Clone(recovery) });
+    f.Write("a.ini", "changed"); SaveV1(f);
+    using var reopened = new Store(f.Home); Equal(2, reopened.Game(f.Game.Id).Snapshots.Count);
+    var orphan = reopened.SnapshotPath(reopened.Game(f.Game.Id).Snapshots.Single(s => s.Id == recovery.Id));
+    new Engine(reopened).Recover();
+    True(!Directory.Exists(orphan)); Equal(1, reopened.Game(f.Game.Id).Snapshots.Count); Equal("Original", f.Read("a.ini"));
+}
+static void IndependentCopiesAndMove()
+{
+    using var f = new Fixture(); f.Write("a.ini", "original"); f.Game.Managed = [T("a.ini")];
+    var first = f.Engine.CreateSnapshot(f.Game, "One", false, false);
+    var second = f.Engine.CreateSnapshot(f.Current, "Two", false, false);
+    var one = f.Store.Payload(first.Files[0]); var two = f.Store.Payload(second.Files[0]); True(one != two);
+    File.SetAttributes(one, File.GetAttributes(one) & ~FileAttributes.ReadOnly); File.WriteAllText(one, "modified");
+    f.Store.Verify(second.Files[0]); Throws(() => f.Store.Verify(first.Files[0]), "modified");
+    File.WriteAllText(one, "original"); File.SetAttributes(one, File.GetAttributes(one) | FileAttributes.ReadOnly);
+    var destination = System.IO.Path.Combine(f.Root, "moved-backups"); f.Store.RelocatePayloads(destination);
+    True(File.Exists(two)); True(f.Store.Payload(second.Files[0]).StartsWith(destination));
+    True((File.GetAttributes(f.Store.Payload(second.Files[0])) & FileAttributes.ReadOnly) != 0);
+    f.Write("a.ini", "changed"); f.Engine.Restore(f.Current, second); Equal("original", f.Read("a.ini"));
+}
+
 sealed class Skipped(string message) : Exception(message);
 sealed class FakeHttp(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
 {
@@ -448,7 +606,12 @@ sealed class Fixture : IDisposable
         var packages = new Packages(Store); var plan = packages.Inspect(Current, Zip(files));
         return packages.Import(Current, plan, name, "1", files.ToDictionary(f => f.Path, f => (string?)f.Path));
     }
-    public void Dispose() { Store.Dispose(); Directory.Delete(Root, true); }
+    public void Dispose()
+    {
+        Store.Dispose();
+        foreach (var file in SafePaths.Walk(Root, maxDepth: 4096)) File.SetAttributes(file, File.GetAttributes(file) & ~FileAttributes.ReadOnly);
+        Directory.Delete(Root, true);
+    }
 }
 
 static class SqliteFixture

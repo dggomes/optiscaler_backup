@@ -1,12 +1,17 @@
 # OptiScaler Backup
 
-Windows x64 utility for named game-settings snapshots and reversible ZIP package installs. The released CLI and native WPF desktop interface share the same .NET 10 core and catalog. The desktop interface is available to build from source; no packaged desktop release is published yet.
+Windows x64 utility for named game-settings snapshots and reversible ZIP package installs. The CLI and native WPF desktop interface share the same .NET 10 core and catalog.
 
 This is an independent backup utility, not an official OptiScaler installer. It manages selected game files and settings, not Windows GPU drivers or driver control-panel profiles.
 
 ## Run
 
-Download `optibackup-win-x64.exe` from this repository's [GitHub Releases](https://github.com/dggomes/optiscaler_backup/releases), optionally rename it to `optibackup.exe`, and place it in a writable folder outside your game directories. Published builds include the .NET runtime. Release assets become available when a maintainer publishes a version through the release workflow.
+Download either interface from this repository's [GitHub Releases](https://github.com/dggomes/optiscaler_backup/releases):
+
+- `optibackup-win-x64.exe`: interactive CLI and scriptable commands; optionally rename it to `optibackup.exe`.
+- `optibackup-ui-win-x64.exe`: native Windows desktop interface.
+
+Each is a self-contained executable with the .NET runtime included and an accompanying `.exe.sha256` checksum. Place it in a writable folder outside your game directories. Both interfaces are included from v0.2.0 onward.
 
 The examples below assume the executable is named `optibackup.exe`. Run from PowerShell:
 
@@ -25,15 +30,19 @@ Use the explicit `menu` command when supplying menu input through a pipe. Piped 
 @('0') | .\optibackup.exe menu
 ```
 
-Backups default to `%LOCALAPPDATA%\OptiScalerBackup\backups`. Keep that folder and the catalog safe; they contain the only copies of replaced files retained by this app. See [storage and recovery](docs/storage-format.md).
+Backups default to `%LOCALAPPDATA%\OptiScalerBackup\backups`. Named versions and recovery snapshots are ordinary full-copy folders beneath `backups\snapshots`, grouped by game and capture time/name. They retain game-relative filenames and separate external-settings folders, so you can browse them in Explorer. CLI snapshot create/list output includes the full `FolderPath`.
+
+Snapshot files are read-only and verified against their recorded hashes before restoration. Do not edit them; modified payloads block restoration before game files change. Full copies use more disk space than deduplicated blobs. Keep the snapshot folders and catalog safe; see [storage and recovery](docs/storage-format.md).
+
+Opening v1 data automatically upgrades it to schema 2, retaining `catalog.v1.json` and old blobs. The upgrade needs space for full copies of every existing snapshot and recovery snapshot. This is a one-way format upgrade: v0.1.x cannot read the upgraded catalog. If conversion fails, the original catalog remains unchanged and the app reports the reason.
 
 ## Native Windows interface
 
-Build and run the desktop app on Windows using the [desktop instructions](src/desktop/README.md). It opens the same library, snapshots and package history as the CLI. Close other sessions using that catalog before launching it.
+Run `optibackup-ui-win-x64.exe` on Windows, or build it using the [desktop instructions](src/desktop/README.md). It opens the same library, snapshots and package history as the CLI. Close other sessions using that catalog before launching it.
 
 - Search game names as you type; scan launchers/custom folders or add a game manually.
 - Selecting a game detects new standard-file candidates and shows their count. **Review managed files** opens one batch review with proxy evidence and external paths. Include/exclude candidates, add existing files or absent game-relative paths, then confirm once.
-- In **Versions**, save a named version, establish user-confirmed Original, rename a version, or preview and confirm restoration.
+- In **Versions**, save a named version, establish user-confirmed Original, rename a version, or preview and confirm restoration. **Show files** opens the selected snapshot folder; **Open backups** opens the selected game's snapshot collection when available.
 - In **Packages**, review/edit ZIP destinations and exclusions before import, then separately preview installation. Rename packages and roll back active layers with the same overlap ordering and edited-file protection as the CLI.
 
 Discovery, hashing and file operations run off the UI thread and are serialized. Startup attempts pending game-file recovery before opening the library. **Release downloads** opens GitHub Releases in a browser; desktop self-update is not implemented. Automatic update checks/installations remain CLI-only. Advanced settings, including backup location and archive limits, remain available through CLI `config` commands; close the desktop app before using them.
@@ -149,7 +158,7 @@ Interactive startup checks for a newer stable release at most once daily and ask
 .\optibackup.exe config set max-archive-files 10000
 ```
 
-Changing the backup directory copies and verifies payloads before switching the catalog; old copies are retained. Keep backup storage separate from game directories. `--home <folder>` selects a different catalog/data home, useful for isolated use or testing.
+Changing the backup directory copies and verifies referenced snapshot files and blobs before switching the catalog, preserves snapshot read-only attributes, and retains old copies. Keep backup storage separate from game directories. `--home <folder>` selects a different catalog/data home, useful for isolated use or testing.
 
 The updater downloads this repository's stable Windows executable and SHA-256 checksum over HTTPS, waits for the app to exit, replaces the executable, checks startup health and restarts it. It retains a `.previous` copy beside the executable for failed-update rollback. Self-installation requires the published Windows x64 executable named `optibackup.exe` or `optibackup-win-x64.exe` in a writable location. It does not elevate permissions or update while game-file recovery is pending.
 
@@ -179,10 +188,10 @@ Build/publish the desktop app separately; it is excluded from the cross-platform
 
 ```powershell
 dotnet build src/desktop/optiscaler-backup-desktop.csproj -c Release
-dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x64 --self-contained true -o artifacts/desktop
+dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/desktop
 ```
 
-Run `artifacts/desktop/optibackup-ui.exe` on Windows and keep its publish folder together. WPF cannot run on macOS/Linux. Windows startup/render smoke coverage is being added; a cross-build alone does not verify runtime behavior or real-game compatibility.
+Run `artifacts/desktop/optibackup-ui.exe` on Windows. WPF cannot run on macOS/Linux. Windows CI includes startup/render smoke coverage; a cross-build alone does not verify runtime behavior or real-game compatibility.
 
 Node.js is needed only for repository guardrails (`npm run agent:preflight`, `npm run agent:pre-commit`, `npm run agent:session-end`); it is not an application dependency. Windows CI also runs `scripts/test-updater.ps1` against the published executable.
 

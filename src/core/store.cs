@@ -2,13 +2,15 @@ using System.Text.Json;
 
 namespace OptiScalerBackup.Core;
 
-public sealed class Store : IDisposable
+public sealed partial class Store : IDisposable
 {
     private readonly FileStream gate;
     public string Home { get; }
     public Catalog Data { get; private set; }
     public string PayloadRoot => Path.GetFullPath(Data.Settings.BackupDirectory ?? Path.Combine(Home, "backups"));
     public string JournalPath => Path.Combine(Home, "pending.json");
+    public string RenameJournalPath => Path.Combine(Home, "rename-pending.json");
+    public static bool SupportedSchema(int version) => version is 1 or Format.Version;
 
     public Store(string home)
     {
@@ -19,8 +21,10 @@ public sealed class Store : IDisposable
         try
         {
             Data = File.Exists(Path.Combine(Home, "catalog.json")) ? Read<Catalog>(Path.Combine(Home, "catalog.json")) : new();
-            if (Data.SchemaVersion != Format.Version) throw new InvalidOperationException("Unsupported catalog schema; no data changed.");
+            if (!SupportedSchema(Data.SchemaVersion)) throw new InvalidOperationException("Unsupported catalog schema; no data changed.");
             SafePaths.NoLinks(PayloadRoot);
+            RecoverRename();
+            Upgrade();
         }
         catch { gate.Dispose(); throw; }
     }
@@ -51,8 +55,14 @@ public sealed class Store : IDisposable
     public void Put(Game game)
     {
         var index = Data.Games.FindIndex(g => g.Id == game.Id);
+        var previous = index < 0 ? null : Data.Games[index];
         if (index < 0) Data.Games.Add(game); else Data.Games[index] = game;
-        Save();
+        try { Save(); }
+        catch
+        {
+            if (index < 0) Data.Games.Remove(game); else Data.Games[index] = previous!;
+            throw;
+        }
     }
     public string Blob(string hash)
     {

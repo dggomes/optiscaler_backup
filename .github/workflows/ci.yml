@@ -26,10 +26,16 @@ jobs:
       - name: Publish Windows executable
         if: runner.os == 'Windows'
         run: dotnet publish src/cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/win-x64
+      - name: Download previous schema release for compatibility test
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: PATH="/usr/bin:$PATH" gh release download v0.1.1 --repo "$GITHUB_REPOSITORY" --pattern 'optibackup-win-x64.exe*' --dir artifacts/previous
       - name: Updater integration tests
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/test-updater.ps1 -Executable artifacts/win-x64/optibackup.exe
+        run: ./scripts/test-updater.ps1 -Executable artifacts/win-x64/optibackup.exe -PreviousExecutable artifacts/previous/optibackup-win-x64.exe
       - name: Build and format desktop
         if: runner.os == 'Windows'
         shell: pwsh

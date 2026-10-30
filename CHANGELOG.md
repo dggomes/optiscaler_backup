@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] — 2026-10-30
 
 ### Added
 
@@ -8,8 +8,16 @@
 - Desktop actions to capture, rename and preview restoration of named snapshots.
 - Reviewed ZIP import, package installation and renaming, and layered package rollback from the desktop client.
 - Shared catalog, payloads and journal recovery with the CLI; background operations keep lengthy file work off the UI thread.
+- CLI snapshot folder output and desktop “Show files” / “Open backups” actions for browsing saved files.
 
-The desktop client has not been released. Windows runtime smoke testing is pending.
+### Changed
+
+- Schema 2 stores each snapshot and recovery snapshot as a readable folder of full file copies. Package payloads remain content-addressed blobs.
+- Snapshot files are read-only; restores verify recorded hashes and refuse modified backup payloads.
+- Automatically convert schema 1 snapshots on upgrade, retaining `catalog.v1.json` and the original blobs. Full snapshot copies use more disk space than deduplicated blobs.
+- Snapshot renaming moves its folder and updates references with crash recovery. Changing the backup directory preserves full snapshot copies and their read-only attributes.
+
+Prior Windows desktop startup/render smoke testing passed. Schema 2 validation and real gaming-PC acceptance testing remain pending.
 
 ## [0.1.1] — 2026-10-30
 

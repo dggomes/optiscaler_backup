@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using OptiScalerBackup.Core;
 using OptiScalerBackup.Windows;
@@ -41,6 +42,9 @@ public partial class MainWindow : Window
                 .Select(g => new GameRow(g.Id, g.Name, Directory.Exists(g.Directory) ? string.Join(" · ", g.Sources) : "Drive unavailable")).ToList();
             GameList.ItemsSource = rows; GameList.SelectedItem = rows.FirstOrDefault(g => g.Id == selectedId);
             LibraryCount.Text = $"{store.Data.Games.Count} games · {rows.Count} shown";
+            EmptyTitle.Text = store.Data.Games.Count == 0 ? "Start with your library." : rows.Count == 0 ? "No matching games." : "Choose a game.";
+            EmptyDescription.Text = store.Data.Games.Count == 0 ? "Scan your installed launchers, or add a game folder. Select a game to review files, save versions and install packages."
+                : rows.Count == 0 ? "Try a different name or clear the search to show your library." : "Select a game from the library to review files and return to a working version.";
             if (selectedId != null && rows.All(g => g.Id != selectedId)) selectedId = null;
             RefreshDetails();
         }
@@ -171,7 +175,7 @@ public partial class MainWindow : Window
     {
         var game = Selected; var row = SnapshotList.SelectedItem as SnapshotRow ?? throw new InvalidOperationException("Select a version.");
         var dialog = new NameDialog(this, "Rename version", row.Name);
-        if (dialog.ShowDialog() == true) await Work("Renaming version", () => { var next = Format.Clone(game); next.Snapshots.Single(s => s.Id == row.Id).Name = dialog.Value; store.Put(next); });
+        if (dialog.ShowDialog() == true) await Work("Renaming version", () => engine.RenameSnapshot(game, row.Id, dialog.Value));
     });
 
     private async void Import_Click(object sender, RoutedEventArgs e) => await Guard("Import package", async () =>
@@ -212,8 +216,22 @@ public partial class MainWindow : Window
 
     private async void OpenBackups_Click(object sender, RoutedEventArgs e) => await Guard("Open backups", () =>
     {
-        SafePaths.NoLinks(store.PayloadRoot); Directory.CreateDirectory(store.PayloadRoot);
-        Process.Start(new ProcessStartInfo(store.PayloadRoot) { UseShellExecute = true }); return Task.CompletedTask;
+        var folder = store.PayloadRoot;
+        if (selectedId != null)
+        {
+            var gameFolder = store.StoragePath(store.GameSnapshotFolder(Selected));
+            if (Directory.Exists(gameFolder)) folder = gameFolder;
+        }
+        SafePaths.NoLinks(folder); Directory.CreateDirectory(folder);
+        Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true }); return Task.CompletedTask;
+    });
+    private async void ShowFiles_Click(object sender, RoutedEventArgs e) => await Guard("Show snapshot files", () =>
+    {
+        var row = SnapshotList.SelectedItem as SnapshotRow ?? throw new InvalidOperationException("Select a version.");
+        var snapshot = Selected.Snapshots.Single(s => s.Id == row.Id);
+        var folder = store.SnapshotPath(snapshot);
+        if (!Directory.Exists(folder)) throw new IOException("Snapshot folder is unavailable.");
+        Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true }); return Task.CompletedTask;
     });
     private async void Releases_Click(object sender, RoutedEventArgs e) => await Guard("Open releases", () =>
     {
@@ -224,11 +242,13 @@ public partial class MainWindow : Window
         if (busy) { e.Cancel = true; StatusText.Text = "Wait for the active operation to finish before closing."; }
     }
 
-    public void SmokeTest(string screenshot)
+    public async Task SmokeTest(string screenshot)
     {
         var count = store.Data.Games.Count;
         SearchBox.Text = "__no_matching_game__";
         if (GameList.Items.Count != 0) throw new InvalidOperationException("Search binding failed.");
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        UpdateLayout(); SaveImage(Shell, screenshot + ".empty.png");
         SearchBox.Clear();
         if (GameList.Items.Count != count) throw new InvalidOperationException("Clearing search failed.");
         if (count > 0)
@@ -237,25 +257,29 @@ public partial class MainWindow : Window
             if (GamePanel.Visibility != Visibility.Visible || GameTitle.Text != ((GameRow)GameList.SelectedItem).Name)
                 throw new InvalidOperationException("Game selection binding failed.");
         }
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
         UpdateLayout();
+        if (count > 0 && SnapshotList.Items.Count > 0 && SnapshotList.Columns[0].ActualWidth <= 0) throw new InvalidOperationException("Version columns did not finish layout.");
         SaveImage(Shell, screenshot);
         if (count == 0) return;
         var game = Selected;
         var files = new FileReviewDialog(this, store, game, FindFiles(game));
-        RenderDialog(files, screenshot + ".files.png");
-        RenderDialog(new NameDialog(this, "Save version", offerOriginal: true), screenshot + ".version.png");
+        await RenderDialog(files, screenshot + ".files.png");
+        await RenderDialog(new NameDialog(this, "Save version", offerOriginal: true), screenshot + ".version.png");
         if (game.Snapshots.FirstOrDefault() is { } snapshot)
-            RenderDialog(new ChangeDialog(this, game, "Restore version", "Review recorded file changes.", engine.Preview(game, snapshot.Files)), screenshot + ".changes.png");
+            await RenderDialog(new ChangeDialog(this, game, "Restore version", "Review recorded file changes.", engine.Preview(game, snapshot.Files)), screenshot + ".changes.png");
         if (game.Packages.FirstOrDefault() is { } package)
         {
             var plan = new ImportPlan(package.ArchiveHash, package.Mappings.Select(m => new ImportEntry(m.Entry, m.Hash, m.Size, m.Target.Path, [m.Target.Path])).ToList());
-            RenderDialog(new PackageReviewDialog(this, plan), screenshot + ".package.png");
+            await RenderDialog(new PackageReviewDialog(this, plan), screenshot + ".package.png");
         }
     }
 
-    private static void RenderDialog(Window dialog, string file)
+    private static async Task RenderDialog(Window dialog, string file)
     {
-        dialog.Show(); dialog.UpdateLayout();
+        dialog.Show();
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        dialog.UpdateLayout();
         SaveImage((FrameworkElement)dialog.Content, file);
         dialog.Close();
     }

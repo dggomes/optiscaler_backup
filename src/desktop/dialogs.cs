@@ -19,7 +19,7 @@ internal abstract class ReviewDialog : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner; FontFamily = owner.FontFamily; FontSize = 14;
         Background = new SolidColorBrush(Color.FromRgb(244, 242, 237));
         Resources.MergedDictionaries.Add(owner.Resources);
-        var root = new Grid { Margin = new Thickness(26) };
+        var root = new Grid();
         foreach (var height in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto }) root.RowDefinitions.Add(new() { Height = height });
         var header = new StackPanel { Margin = new Thickness(0, 0, 0, 20) };
         header.Children.Add(new TextBlock { Text = title, FontSize = 28, FontFamily = new FontFamily("Bahnschrift") });
@@ -35,7 +35,8 @@ internal abstract class ReviewDialog : Window
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
             { error.Text = e.Message; }
         };
-        footer.Children.Add(cancel); footer.Children.Add(accept); Grid.SetRow(footer, 3); root.Children.Add(footer); Content = root;
+        footer.Children.Add(cancel); footer.Children.Add(accept); Grid.SetRow(footer, 3); root.Children.Add(footer);
+        Content = new Border { Padding = new Thickness(26), Background = Background, Child = root };
     }
     protected abstract void Approve();
     protected static DataGrid Table(bool editable = false) => new() { IsReadOnly = !editable, SelectionMode = DataGridSelectionMode.Single, CanUserAddRows = false, AutoGenerateColumns = false };

@@ -4,6 +4,8 @@ WPF frontend for the shared .NET 10 core. It uses the same catalog and backups a
 
 ## Build and run
 
+Download the self-contained `optibackup-ui-win-x64.exe` and its `.exe.sha256` checksum from [GitHub Releases](https://github.com/dggomes/optiscaler_backup/releases), available from v0.2.0. Run the executable on Windows; no .NET SDK/runtime installation is required for release builds.
+
 The desktop project is deliberately outside `optiscaler-backup.sln`, keeping core/CLI solution builds cross-platform. Install the .NET 10 SDK, then on Windows:
 
 ```powershell
@@ -11,22 +13,26 @@ dotnet build src/desktop/optiscaler-backup-desktop.csproj -c Release
 dotnet run --project src/desktop/optiscaler-backup-desktop.csproj
 ```
 
-Publish a self-contained Windows x64 folder:
+Publish a self-contained Windows x64 executable:
 
 ```powershell
-dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x64 --self-contained true -o artifacts/desktop
+dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/desktop
 .\artifacts\desktop\optibackup-ui.exe
 ```
 
-Keep all files in the publish folder together. `--home <folder>` selects a different catalog home. WPF runs only on Windows; macOS/Linux cross-building does not verify startup or rendering. Windows CI startup/render smoke coverage is being added. No packaged desktop release is published yet.
+`--home <folder>` selects a different catalog home. WPF runs only on Windows; macOS/Linux cross-building does not verify startup or rendering. Windows CI includes startup/render smoke coverage; this does not establish compatibility with every game or launcher.
 
 ## Workflow
 
 Search filters game names immediately, ignoring case. Scan installed launchers, scan a custom folder or add a game manually. Selecting a game detects standard-file candidates and reports how many are new. **Review managed files** presents one editable selection batch with proxy evidence and external paths; add existing files or absent game-relative paths, then approve once.
 
-**Versions** captures named snapshots, offers user-confirmed Original once, renames labels and previews restoration before confirmation. **Packages** reviews ZIP destinations/exclusions, imports named versions, previews installs and rolls back active installations. Overlapping layers require explicit approval and reverse rollback order; externally edited files require explicit override after recovery capture. The engine preserves these rules across both interfaces.
+**Versions** captures named snapshots, offers user-confirmed Original once, renames labels/folders and previews restoration before confirmation. **Show files** opens the selected snapshot's browsable full-copy folder. Files are read-only; edits are detected before restoration. Renaming a snapshot uses a recovery journal so an interrupted rename can be rolled back safely.
 
-**Open backups** opens the configured payload folder. **Release downloads** opens the repository's releases page; the desktop app does not automatically check for or install updates. Use CLI `config` for advanced settings after closing the desktop app.
+**Packages** reviews ZIP destinations/exclusions, imports named versions, previews installs and rolls back active installations. Package payloads remain deduplicated blobs; their pre-install/recovery backups are browsable snapshot folders. Overlapping layers require explicit approval and reverse rollback order; externally edited files require explicit override after recovery capture. The engine preserves these rules across both interfaces.
+
+**Open backups** opens the selected game's snapshot collection when it exists, otherwise the configured payload folder. **Release downloads** opens the repository's releases page; the desktop app does not automatically check for or install updates. Use CLI `config` for advanced settings after closing the desktop app.
+
+First opening a schema 1 catalog converts existing snapshots to schema 2 folders, retaining `catalog.v1.json` and old blobs. Allow extra disk space for full copies. Schema 2 is not readable by v0.1.x. See [storage and recovery](../../docs/storage-format.md) before moving or restoring the data home.
 
 ## Boundaries
 

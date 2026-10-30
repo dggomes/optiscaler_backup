@@ -39,7 +39,7 @@
         </Style>
         <Style TargetType="TabItem"><Setter Property="Padding" Value="16,10"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
     </Window.Resources>
-    <Grid x:Name="Shell">
+    <Grid x:Name="Shell" Background="#F4F2ED">
         <Grid.ColumnDefinitions><ColumnDefinition Width="305"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Border Background="#172125">
             <Grid Margin="22,27,22,20">
@@ -79,7 +79,7 @@
             </Grid>
             <Grid Grid.Row="1">
                 <Border x:Name="EmptyState" Background="#FFFFFF" CornerRadius="9" Padding="38">
-                    <StackPanel VerticalAlignment="Center"><TextBlock Text="Start with your library." FontFamily="Bahnschrift" FontSize="36" Foreground="{StaticResource Ink}"/><TextBlock Text="Scan your installed launchers, or add a game folder.&#10;Select a game to review files, save versions and install packages." TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="16" Margin="0,17,0,0" LineHeight="27"/></StackPanel>
+                    <StackPanel VerticalAlignment="Center"><TextBlock x:Name="EmptyTitle" Text="Start with your library." FontFamily="Bahnschrift" FontSize="36" Foreground="{StaticResource Ink}"/><TextBlock x:Name="EmptyDescription" Text="Scan your installed launchers, or add a game folder.&#10;Select a game to review files, save versions and install packages." TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="16" Margin="0,17,0,0" LineHeight="27"/></StackPanel>
                 </Border>
                 <Grid x:Name="GamePanel" Visibility="Collapsed">
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -89,7 +89,7 @@
                     </Border>
                     <TabControl Grid.Row="2" Background="#FFFFFF" BorderBrush="#DDE2D6" Padding="17">
                         <TabItem Header="Versions"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <WrapPanel Margin="0,0,0,17"><Button Content="Save version" Style="{StaticResource Primary}" Click="Capture_Click"/><Button Content="Preview restore" Click="Restore_Click"/><Button Content="Rename" Click="RenameSnapshot_Click"/></WrapPanel>
+                            <WrapPanel Margin="0,0,0,17"><Button Content="Save version" Style="{StaticResource Primary}" Click="Capture_Click"/><Button Content="Preview restore" Click="Restore_Click"/><Button Content="Show files" Click="ShowFiles_Click"/><Button Content="Rename" Click="RenameSnapshot_Click"/></WrapPanel>
                             <DataGrid Grid.Row="1" x:Name="SnapshotList" SelectionMode="Single" AutomationProperties.Name="Saved versions"><DataGrid.Columns><DataGridTextColumn Header="Version" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="100"/><DataGridTextColumn Header="Saved" Binding="{Binding Created}" Width="150"/></DataGrid.Columns></DataGrid>
                         </Grid></TabItem>
                         <TabItem Header="Managed files"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="Only recorded paths are restored. Explicit absence removes a file; unknown paths are preserved." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,15"/><DataGrid Grid.Row="1" x:Name="ManagedList" AutomationProperties.Name="Managed files"><DataGrid.Columns><DataGridTextColumn Header="File" Binding="{Binding Path}" Width="*"/><DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="130"/></DataGrid.Columns></DataGrid></Grid></TabItem>

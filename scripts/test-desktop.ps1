@@ -32,7 +32,7 @@ try {
         if (Test-Path ($image+'.error')) { Get-Content ($image+'.error') | Write-Host }
         throw "Desktop smoke exited with $($process.ExitCode)"
     }
-    foreach ($path in @($image,($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
+    foreach ($path in @($image,($image+'.empty.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
         if (-not (Test-Path $path) -or (Get-Item $path).Length -lt 1000) { throw "Desktop render missing/empty: $path" }
     }
     Write-Host 'PASS desktop startup, search, selection and dialog rendering'

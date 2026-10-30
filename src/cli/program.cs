@@ -221,18 +221,29 @@ internal sealed partial class Application(Store store, Engine engine)
         var game = store.Game(args.At(2));
         switch (args.At(1))
         {
-            case "list": args.Count(3, 3); Output(game.Snapshots, args); break;
+            case "list": args.Count(3, 3); Output(game.Snapshots.Select(SnapshotOutput), args); break;
             case "create":
                 args.Count(4, 4);
                 if (args.Has("original")) Console.WriteLine("Original records current files. Confirm clean only if you know they are unmodified.");
-                Output(engine.CreateSnapshot(game, args.At(3), args.Has("original"), args.Has("confirm-clean")), args); break;
+                Output(SnapshotOutput(engine.CreateSnapshot(game, args.At(3), args.Has("original"), args.Has("confirm-clean"))), args); break;
             case "rename":
                 args.Count(5, 5);
-                var next = Format.Clone(game);
-                FindSnapshot(next, args.At(3)).Name = Format.Label(args.At(4)); store.Put(next); break;
+                engine.RenameSnapshot(game, args.At(3), args.At(4)); break;
             default: throw new ArgumentException("Unknown snapshots action.");
         }
     }
+
+    private object SnapshotOutput(Snapshot snapshot) => new
+    {
+        snapshot.Id,
+        snapshot.Name,
+        snapshot.Created,
+        snapshot.Original,
+        snapshot.Recovery,
+        snapshot.Folder,
+        FolderPath = store.SnapshotPath(snapshot),
+        snapshot.Files
+    };
 
     private static Snapshot FindSnapshot(Game game, string id) => game.Snapshots.SingleOrDefault(s => s.Id == id) ?? throw new InvalidOperationException("Snapshot ID not found.");
     private static Package FindPackage(Game game, string id) => game.Packages.SingleOrDefault(p => p.Id == id) ?? throw new InvalidOperationException("Package ID not found.");
@@ -320,7 +331,7 @@ internal sealed partial class Application(Store store, Engine engine)
             case "max-archive-files":
                 if (!int.TryParse(value, out var count) || count < 1 || count > 1000000) throw new ArgumentException("File limit must be 1–1000000.");
                 store.Data.Settings.MaxArchiveFiles = count; break;
-            case "backup-directory": MoveBackups(value, args); break;
+            case "backup-directory": MoveBackups(value, args); return;
             default: throw new ArgumentException("Unknown configuration setting.");
         }
         store.Save();
@@ -328,28 +339,8 @@ internal sealed partial class Application(Store store, Engine engine)
 
     private void MoveBackups(string value, Arguments args)
     {
-        var destination = Path.GetFullPath(value);
-        SafePaths.NoLinks(destination);
-        if (destination.Equals(store.PayloadRoot, StringComparison.OrdinalIgnoreCase)) return;
-        if (SafePaths.Within(store.PayloadRoot, destination) || SafePaths.Within(destination, store.PayloadRoot) ||
-            store.Data.Games.SelectMany(g => g.ExternalRoots.Values.Append(g.Directory)).Any(root =>
-                destination.Equals(root, StringComparison.OrdinalIgnoreCase) || SafePaths.Within(root, destination) || SafePaths.Within(destination, root)))
-            throw new IOException("Choose a backup directory separate from game folders and the current backup directory.");
-        var blobRoot = Path.Combine(store.PayloadRoot, "blobs");
-        var files = Directory.Exists(blobRoot) ? SafePaths.Walk(blobRoot).ToList() : [];
-        SafePaths.Space(destination, files.Sum(p => new FileInfo(p).Length));
-        Confirm($"Copy {files.Count} backup payloads to {destination}; retain old copies", args);
-        foreach (var file in files)
-        {
-            var hash = Path.GetFileName(file);
-            store.Verify(hash);
-            var dest = Path.Combine(destination, "blobs", hash[..2], hash);
-            SafePaths.NoLinks(dest);
-            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-            File.Copy(file, dest, true);
-            if (SafePaths.Hash(dest) != hash) throw new IOException("Backup migration integrity failure; original location retained.");
-        }
-        store.Data.Settings.BackupDirectory = destination;
+        Confirm($"Copy verified snapshot folders and package payloads to {Path.GetFullPath(value)}; retain old copies", args);
+        store.RelocatePayloads(value);
     }
 
     public async Task<bool> StartupUpdate()

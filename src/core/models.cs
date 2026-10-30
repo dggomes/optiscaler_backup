@@ -4,7 +4,7 @@ namespace OptiScalerBackup.Core;
 
 public static class Format
 {
-    public const int Version = 1;
+    public const int Version = 2;
     public static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
     public static string Id() => Guid.NewGuid().ToString("N");
     public static T Clone<T>(T value) => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value, Json), Json)!;
@@ -16,7 +16,7 @@ public sealed record Target(string Root, string Path)
 {
     public string Key => Root + ":" + Path.Replace('\\', '/').ToLowerInvariant();
 }
-public sealed record FileState(Target Target, string? Hash, long Size);
+public sealed record FileState(Target Target, string? Hash, long Size, string? Payload = null);
 public sealed class Snapshot
 {
     public string Id { get; set; } = Format.Id();
@@ -24,6 +24,7 @@ public sealed class Snapshot
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
     public bool Original { get; set; }
     public bool Recovery { get; set; }
+    public string? Folder { get; set; }
     public List<FileState> Files { get; set; } = [];
 }
 public sealed class Package
@@ -85,3 +86,10 @@ public sealed class Journal
 public sealed record Change(string Action, Target Target, string? CurrentHash, string? DesiredHash);
 public sealed record ImportEntry(string Entry, string Hash, long Size, string? SuggestedPath, List<string> Candidates);
 public sealed record ImportPlan(string ArchiveHash, List<ImportEntry> Files);
+public sealed class RenameJournal
+{
+    public int Version { get; set; } = 1;
+    public Game BeforeGame { get; set; } = new();
+    public string OldFolder { get; set; } = "";
+    public string NewFolder { get; set; } = "";
+}

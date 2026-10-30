@@ -5,7 +5,7 @@ namespace OptiScalerBackup.Windows;
 
 public sealed class UpdateJob
 {
-    public int SchemaVersion { get; set; } = Format.Version;
+    public int SchemaVersion { get; set; } = UpdateHost.JobVersion;
     public string Home { get; set; } = "";
     public string Destination { get; set; } = "";
     public string Download { get; set; } = "";
@@ -19,6 +19,7 @@ public sealed class UpdateJob
 
 public static class UpdateHost
 {
+    public const int JobVersion = 1;
     public static string Pending(string home) => Path.Combine(home, "updates", "pending.json");
 
     public static void Stage(Store store, string downloaded, ReleaseInfo release)
@@ -74,7 +75,7 @@ public static class UpdateHost
         // The helper holds session.lock through the probe. Read metadata without
         // opening a second session; this process must never mutate user data.
         var catalog = Path.Combine(job.Home, "catalog.json");
-        if (File.Exists(catalog) && Store.Read<Catalog>(catalog).SchemaVersion != Format.Version)
+        if (File.Exists(catalog) && !Store.SupportedSchema(Store.Read<Catalog>(catalog).SchemaVersion))
             throw new IOException("Unsupported catalog format in updated application.");
         if (File.Exists(Path.Combine(job.Home, "pending.json"))) throw new IOException("Pending game recovery prevents update health confirmation.");
         Store.Atomic(path + ".healthy", new { Version = Releases.Current.ToString() });
@@ -158,7 +159,7 @@ public static class UpdateHost
     {
         SafePaths.NoLinks(path);
         var job = Store.Read<UpdateJob>(path);
-        if (job.SchemaVersion != Format.Version || !Path.GetFullPath(path).Equals(Pending(Path.GetFullPath(job.Home)), StringComparison.OrdinalIgnoreCase))
+        if (job.SchemaVersion != JobVersion || !Path.GetFullPath(path).Equals(Pending(Path.GetFullPath(job.Home)), StringComparison.OrdinalIgnoreCase))
             throw new IOException("Invalid updater job location/schema.");
         SafePaths.NoLinks(job.Destination); SafePaths.NoLinks(job.Download);
         SafePaths.NoLinks(job.Destination + ".previous"); SafePaths.NoLinks(job.Destination + ".incoming");
