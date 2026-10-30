@@ -32,7 +32,12 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     def catalog():
         return json.loads((home / 'catalog.json').read_text(encoding='utf-8'))
 
+    home.mkdir(exist_ok=True)
+    stale_lock = home / 'session.lock'
+    stale_lock.write_text('stale copied marker')
+    stale_lock.chmod(stat.S_IREAD)
     run('config', 'set', 'download-thumbnails', 'false')
+    assert not stale_lock.exists(), 'CLI did not clear its stale read-only session marker'
     assert catalog()['Settings']['DownloadThumbnails'] is False
     run('config', 'set', 'download-thumbnails', 'invalid', succeeds=False)
     assert catalog()['Settings']['DownloadThumbnails'] is False

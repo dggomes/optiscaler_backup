@@ -6,7 +6,7 @@
 - Retry briefly for exiting sessions; preserve active/legacy locks and reject linked markers. Windows startup errors identify live holder names/PIDs when available; no process shutdown or ACL changes.
 - Display and verify four-part maintenance versions correctly. Existing storage, UI and feature behavior is retained.
 
-Validation of this maintenance build is pending.
+Local validation: 50 service tests pass with two Windows-only skips, plus CLI/menu checks. Windows CI also covers native WPF startup with stale read-only markers, owner reporting and updater recovery. Real gaming-PC acceptance remains pending.
 
 ## [0.3.0] — 2026-10-30
 
