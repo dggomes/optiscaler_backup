@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection.PortableExecutable;
 using OptiScalerBackup.Core;
 
 namespace OptiScalerBackup.Windows;
@@ -209,8 +210,16 @@ public static class UpdateHost
     {
         var files = Files(job);
         foreach (var file in files)
+        {
             if (SafePaths.Hash(file.Download) != file.ExpectedHash || SafePaths.Hash(file.Destination) != file.PreviousHash)
                 throw new IOException("An executable changed before update replacement.");
+            using var input = File.OpenRead(file.Download);
+            using var image = new PEReader(input);
+            if (image.PEHeaders.PEHeader?.Magic != PEMagic.PE32Plus || image.PEHeaders.CoffHeader.Machine != Machine.Amd64
+                || (image.PEHeaders.CoffHeader.Characteristics & Characteristics.ExecutableImage) == 0
+                || (image.PEHeaders.CoffHeader.Characteristics & Characteristics.Dll) != 0)
+                throw new IOException("Update is not a Windows x64 executable: " + Path.GetFileName(file.Destination));
+        }
         SafePaths.Space(job.Destination, files.Sum(file => new FileInfo(file.Download).Length + new FileInfo(file.Destination).Length));
         foreach (var file in files) File.Copy(file.Destination, file.Destination + ".previous", true);
         job.Status = "swapping"; Store.Atomic(path, job);

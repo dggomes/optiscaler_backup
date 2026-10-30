@@ -42,7 +42,9 @@ The library toolbar also scans a custom folder or adds a game manually. Library,
 
 ## Game workflows
 
-Opening a game detects standard-file candidates and reports how many are new. **Files → Review files…** presents current managed files and new candidates together, with proxy evidence and external paths. Add existing files or absent game-relative paths, uncheck files to stop tracking them for future captures, then approve once. Untracking does not alter historical snapshots.
+Opening a game detects standard-file candidates and reports how many are new. **Files → Review / add files…** presents current managed files and new candidates together, with proxy evidence and external paths. Add existing files or absent game-relative paths, uncheck files to stop tracking them for future captures, then approve once. Untracking does not alter historical snapshots.
+
+The **Files** table separates **File name**, **Folder** and **Location**; game folders are relative, external settings retain their external folder. Hover filename/folder cells for the full path. **Filter files…** searches paths case-insensitively and shows matching/total counts; opening another game clears the filter.
 
 The setup guide offers file selection first, then **Save Original…** when no Original exists. The clean/unmodified assertion requires explicit confirmation. **Save backup** captures another named snapshot. **Backups** supports rename and restore previews; recovery snapshots are hidden until **Show recovery backups** is checked. Snapshot, package and installation selections persist through refreshes. Buttons needing a selected row are disabled until one is chosen; capture, install, restore and rollback also require an available game folder.
 
@@ -50,11 +52,15 @@ The setup guide offers file selection first, then **Save Original…** when no O
 
 **Packages** reviews ZIP destinations/exclusions, imports named versions, previews installs and rolls back active installations. Package payloads remain deduplicated blobs; their pre-install/recovery backups are browsable snapshot folders. Overlapping layers require explicit approval and reverse rollback order; externally edited files require explicit override after recovery capture. The engine preserves these rules across both interfaces.
 
-The game workspace scrolls in compact windows to keep package tables and their actions reachable. Operations run off the UI thread, one at a time. Active work temporarily disables competing actions and prevents closing the window; errors are shown inline and can be dismissed. Startup recovery runs before normal work.
+Game pages hide the global app masthead in favor of a compact title, library breadcrumb, counts, path and Original reminder. The header stays above tabs that fill the remaining window height. Tables scroll internally; there is no whole-game-page scroll. Compact 30-pixel rows, controls and review dialogs keep more files visible while retaining the clean-Original confirmation.
+
+Operations run off the UI thread, one at a time. Active work temporarily disables competing actions and prevents closing the window; errors are shown inline and can be dismissed. Startup recovery runs before normal work.
 
 ## Settings and storage
 
 **Settings → Change location…** confirms the source/destination, copies and verifies snapshots/blobs, then switches the configured location. Old copies are retained. Other controls open the backup folder, copy its path or open app data. **Open backups** from a game opens that game's snapshot collection when it exists; elsewhere it opens the configured payload folder.
+
+Settings places storage and thumbnail controls in the left column and update actions in the right, keeping related actions together without a long stacked page.
 
 **Download thumbnails automatically** is enabled by default; switch it off to stop future matching/download requests. Existing cached images remain available. **Refresh thumbnails** retries every catalog entry. Images live under `<home>/thumbnails`, separate from backup storage, with 4 MiB JPEG limits and SHA-256 verification. Successful entries are rechecked after 30 days; no-match entries after seven days. Moving backup storage does not relocate this cache. The same preference is available through CLI `config set download-thumbnails false` after closing the desktop app.
 

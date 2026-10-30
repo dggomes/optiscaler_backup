@@ -9,6 +9,7 @@
 - Paired updater jobs retain `.previous` executable copies, wait for the initiating app to exit, require idle storage and block running companions. Each updated component receives a health check, including WPF resource startup; failures or interruptions restore the recorded previous executables.
 - Preserve custom data-home paths on restart and archive completed updater jobs before restarting older binaries. Paired job format 2 retains compatibility with legacy single-CLI format 1 jobs.
 - Repair an older companion from the current stable release without downgrading a companion that is already newer.
+- Managed-file filtering and visible file counts, with separate filename/folder columns and full-path tooltips in the workspace and review dialogs.
 
 ### Changed
 
@@ -16,8 +17,11 @@
 - Increase the library page size from 24 to 72 games.
 - Request Steam's real `library_600x900.jpg` portrait artwork first; fall back to `header.jpg` only when the portrait is unavailable (HTTP 404).
 - Automatically refresh older landscape thumbnail caches using an optional `PortraitChecked` metadata field. Existing covers remain available offline; no catalog or cache-schema migration is required.
+- Reclaim game-workspace space by hiding repeated app branding, compacting the game header and Original guide, and letting tabs and tables fill the remaining window. File tables scroll internally instead of scrolling the entire game page; Original still requires explicit clean-state confirmation.
+- Use 30 px table rows, compact toolbars and review dialogs, and smaller naming forms to display more files at once.
+- Arrange Settings in two columns, with storage and artwork controls beside application updates.
 
-Portrait-cache and paired-updater coverage has been added. Release validation, including native paired/legacy updater tests and Windows rendering/library-density checks, is pending. Real gaming-PC acceptance testing remains pending.
+Portrait-cache, paired-updater and workspace-layout coverage has been added, including a 54-file fixture, managed-file filtering and a minimum 340 px table-pane check. Validation of the latest native UI changes is pending. Real gaming-PC acceptance testing remains pending.
 
 ## [0.3.0] — 2026-10-30
 

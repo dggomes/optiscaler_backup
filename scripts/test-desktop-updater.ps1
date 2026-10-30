@@ -43,7 +43,7 @@ function Case([string]$name, [string]$mode) {
     if ($mode -ne 'ui-only') {
         Copy-Item $PreviousCli $cliDest
         $cliDownload = Join-Path $updates 'cli.exe'
-        if ($mode -eq 'bad-health') { [IO.File]::WriteAllText($cliDownload,'Invalid companion executable fixture') }
+        if ($mode -eq 'bad-health') { Copy-Item $Desktop $cliDownload }
         else { Copy-Item $Cli $cliDownload }
         $companions += @{ Destination = $cliDest; Download = $cliDownload; ExpectedHash = (Hash $cliDownload); PreviousHash = (Hash $cliDest) }
     }

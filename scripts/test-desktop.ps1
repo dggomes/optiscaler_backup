@@ -40,7 +40,14 @@ try {
         @{ Version = 1; Checked = ([DateTimeOffset]::UtcNow).ToString('o'); AppId = 1091500; PortraitChecked = $true; Hash = (Get-FileHash $coverFile -Algorithm SHA256).Hash.ToLowerInvariant() } | ConvertTo-Json | Set-Content (Join-Path $cache ($key + '.json')) -Encoding utf8
     } catch { Write-Host ('Optional live cover fixture unavailable: ' + $_.Exception.Message) }
     $null = Invoke-Cli -CommandArgs @('files','add',$game.Id,'OptiScaler.ini')
-    $null = Invoke-Cli -CommandArgs @('snapshots','create',$game.Id,'Original','--original','--confirm-clean')
+    foreach ($index in 1..53) {
+        $relative = 'settings/profiles/graphics-' + $index.ToString('00') + '.ini'
+        $path = Join-Path $testGame $relative
+        New-Item -ItemType Directory -Path (Split-Path $path) -Force | Out-Null
+        'quality=high' | Set-Content $path
+        $null = Invoke-Cli -CommandArgs @('files','add',$game.Id,$relative)
+    }
+    $null = Invoke-Cli -CommandArgs @('snapshots','create',$game.Id,'Graphics baseline')
     Compress-Archive -Path (Join-Path $testGame 'OptiScaler.ini') -DestinationPath $testZip
     $map = Join-Path $testRoot 'mapping.json'
     @{ 'OptiScaler.ini' = 'OptiScaler.ini' } | ConvertTo-Json | Set-Content $map
@@ -61,8 +68,8 @@ try {
     Invoke-Desktop -DataHome $testData -ImagePath $image
     $freshImage = Join-Path $images "fresh.png"
     Invoke-Desktop -DataHome (Join-Path $testRoot "empty-data") -ImagePath $freshImage
-    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.update.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
+    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.files-compact.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.update.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
         if (-not (Test-Path $path) -or (Get-Item $path).Length -lt 1000) { throw "Desktop render missing/empty: $path" }
     }
-    Write-Host 'PASS desktop startup, pagination, global search, navigation, selection retention, offline actions, cached thumbnail display/preferences, update controls/busy guard, recovery filtering and dialog rendering'
+    Write-Host 'PASS desktop startup, pagination, global search, navigation, selection retention, 54-file compact workspace/filter, offline actions, cached thumbnail display/preferences, update controls/busy guard, recovery filtering and dialog rendering'
 } finally { Remove-Item $testRoot -Recurse -Force }

@@ -14,7 +14,7 @@ namespace OptiScalerBackup.Desktop;
 public sealed record GameRow(string Id, string Name, string Detail, string Status, string Initials, System.Windows.Media.ImageSource? Artwork);
 public sealed record SnapshotRow(string Id, string Name, string Kind, string Created, int FileCount, string Size);
 public sealed record InstallationRow(string Id, string Name, string Created);
-public sealed record ManagedRow(string Path, string Location);
+public sealed record ManagedRow(string Name, string Folder, string Path, string Location);
 
 public partial class MainWindow : Window
 {
@@ -76,6 +76,7 @@ public partial class MainWindow : Window
                 : "Try another name or reset the filter to see your games.";
             EmptyPrimary.Content = store.Data.Games.Count == 0 ? "Scan games" : "Reset search";
             EmptySecondary.Visibility = store.Data.Games.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            HeaderChrome.Visibility = page == Page.Game ? Visibility.Collapsed : Visibility.Visible;
             LibraryPanel.Visibility = page == Page.Library ? Visibility.Visible : Visibility.Collapsed;
             GamePanel.Visibility = page == Page.Game && selectedId != null ? Visibility.Visible : Visibility.Collapsed;
             SettingsPanel.Visibility = page == Page.Settings ? Visibility.Visible : Visibility.Collapsed;
@@ -99,12 +100,13 @@ public partial class MainWindow : Window
         var installationId = (InstallationList.SelectedItem as InstallationRow)?.Id;
         GameTitle.Text = game.Name; PathText.Text = game.Directory; SourceText.Text = string.Join(" · ", game.Sources);
         var online = Directory.Exists(game.Directory);
+        AvailabilityText.Visibility = online ? Visibility.Collapsed : Visibility.Visible;
         AvailabilityText.Text = online ? "" : "Game folder unavailable. Reconnect its drive to back up, install or restore files.";
         var count = detectedCounts.GetValueOrDefault(game.Id);
         SummaryText.Text = $"{CountLabel(game.Managed.Count, "selected file")} · {CountLabel(game.Snapshots.Count(s => !s.Recovery), "backup")} · {CountLabel(game.Installations.Count(i => i.RolledBack == null), "active package")}" + (count > 0 ? $" · {count} new files found" : "");
         SetupGuide.Visibility = online && (game.Managed.Count == 0 || !game.Snapshots.Any(s => s.Original)) ? Visibility.Visible : Visibility.Collapsed;
-        SetupTitle.Text = game.Managed.Count == 0 ? "Choose what to protect" : "Keep a clean starting point";
-        SetupDescription.Text = game.Managed.Count == 0 ? "Review detected settings and libraries, add others if needed, then approve once." : "Save an Original backup before making changes. Confirm Original only when the current files are clean.";
+        SetupTitle.Text = game.Managed.Count == 0 ? "Choose backup files" : "No Original backup";
+        SetupDescription.Text = game.Managed.Count == 0 ? "Review detected files and approve your selection once." : "Capture clean files before making changes.";
         SetupButton.Content = game.Managed.Count == 0 ? "Choose files…" : "Save Original…";
         var snapshots = game.Snapshots.Where(s => !s.Recovery || ShowRecovery.IsChecked == true).OrderByDescending(s => s.Created)
             .Select(s => new SnapshotRow(s.Id, s.Name, s.Original ? "Original" : s.Recovery ? "Recovery" : "Backup", s.Created.LocalDateTime.ToString("g"), s.Files.Count(f => f.Hash != null), FormatSize(s.Files.Sum(f => f.Size)))).ToList();
@@ -114,9 +116,9 @@ public partial class MainWindow : Window
         var installations = game.Installations.Where(i => i.RolledBack == null).Reverse().Select(i => new InstallationRow(i.Id,
             PackageLabel(game, i), i.Created.LocalDateTime.ToString("g"))).ToList();
         InstallationList.ItemsSource = installations; InstallationList.SelectedItem = installations.FirstOrDefault(i => i.Id == installationId);
-        ManagedList.ItemsSource = game.Managed.Select(t => new ManagedRow(Physical(game, t), t.Root == "game" ? "Game folder" : "External settings")).ToList();
+        RefreshManagedFiles();
         BackupsEmpty.Visibility = snapshots.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        FilesEmpty.Visibility = game.Managed.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
         PackagesEmpty.Visibility = packages.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         InstallationsEmpty.Visibility = installations.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -128,12 +130,21 @@ public partial class MainWindow : Window
     }
     private static string BlockerNames(Game game, IEnumerable<string> ids) => string.Join(", ", ids.Select(id => PackageLabel(game, game.Installations.Single(i => i.Id == id))));
 
-    private void GameLayout_Changed(object sender, SizeChangedEventArgs e)
+    private void ManagedSearch_Changed(object sender, TextChangedEventArgs e)
+    { if (IsInitialized && selectedId != null) RefreshManagedFiles(); }
+    private void RefreshManagedFiles()
     {
-        if (GameTabs == null || GameScroll.ActualHeight <= 0 || GamePanel.Visibility != Visibility.Visible) return;
-        var header = GamePanel.RowDefinitions.Take(3).Sum(row => row.ActualHeight);
-        var height = Math.Max(400, GameScroll.ActualHeight - header);
-        if (Math.Abs(GameTabs.Height - height) > 0.5) GameTabs.Height = height;
+        var game = Selected; var query = ManagedSearch.Text.Trim();
+        ManagedSearchHint.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var rows = game.Managed.Select(target => new ManagedRow(Path.GetFileName(target.Path),
+                target.Root == "game" ? Path.GetDirectoryName(target.Path) is { Length: > 0 } folder ? folder : "Game root" : Path.GetDirectoryName(Physical(game, target))!,
+                Physical(game, target), target.Root == "game" ? "Game folder" : "External settings"))
+            .Where(row => row.Path.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(row => row.Folder, StringComparer.OrdinalIgnoreCase).ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        ManagedList.ItemsSource = rows;
+        ManagedCountText.Text = query.Length == 0 ? CountLabel(rows.Count, "file") : $"{rows.Count} / {game.Managed.Count} files";
+        FilesEmpty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        FilesEmpty.Text = game.Managed.Count == 0 ? "No files selected. Use Review / add files to choose what to back up." : "No selected files match this filter.";
     }
 
     private void UpdateActions()
@@ -163,7 +174,7 @@ public partial class MainWindow : Window
     private async Task OpenSelectedGame()
     {
         if (busy || GameList.SelectedItem is not GameRow row) return;
-        selectedId = row.Id; page = Page.Game; GameTabs.SelectedIndex = 0; GameScroll.ScrollToTop(); Refresh();
+        selectedId = row.Id; page = Page.Game; GameTabs.SelectedIndex = 0; ManagedSearch.Clear(); Refresh();
         if (!smoke) await Guard("Find settings", async () =>
         {
             if (!Directory.Exists(Selected.Directory)) return;
@@ -237,6 +248,7 @@ public partial class MainWindow : Window
     public async Task SmokeTest(string screenshot)
     {
         var count = store.Data.Games.Count;
+        int gameFileCount() => Selected.Managed.Count;
         SearchBox.Text = "__no_matching_game__";
         if (GameList.Items.Count != 0 || EmptyState.Visibility != Visibility.Visible) throw new InvalidOperationException("Search empty state failed.");
         await Capture(screenshot + ".empty.png");
@@ -271,13 +283,23 @@ public partial class MainWindow : Window
         await Capture(screenshot + ".game.png");
         CheckTabs();
         GameTabs.SelectedIndex = 1; await Capture(screenshot + ".managed.png");
+        if (gameFileCount() >= 54)
+        {
+            ManagedSearch.Text = "graphics-01";
+            if (ManagedList.Items.Count != 1 || ((ManagedRow)ManagedList.Items[0]).Name != "graphics-01.ini") throw new InvalidOperationException("Managed-file filter did not match the filename.");
+            ManagedSearch.Clear();
+            if (ManagedList.Items.Count != gameFileCount()) throw new InvalidOperationException("Clearing managed-file filter lost rows.");
+        }
         GameTabs.SelectedIndex = 2; await Capture(screenshot + ".packages.png");
         var width = Width; var height = Height; Width = MinWidth; Height = MinHeight;
-        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
-        GameScroll.ScrollToBottom();
+        GameTabs.SelectedIndex = 1;
+        await Capture(screenshot + ".files-compact.png");
+        if (ManagedList.ActualHeight < 340 || HeaderChrome.Visibility != Visibility.Collapsed) throw new InvalidOperationException("Compact game workspace does not give files enough height.");
+        if (ManagedList.Items.Cast<ManagedRow>().Any(row => Path.IsPathRooted(row.Name) || row.Name.Contains('\\') || row.Name.Contains('/'))) throw new InvalidOperationException("File names are hidden inside full paths.");
+        GameTabs.SelectedIndex = 2;
         await Capture(screenshot + ".compact.png");
         if (PackageList.ActualHeight < 92 || InstallationList.ActualHeight < 92) throw new InvalidOperationException("Compact package tables clip rows.");
-        Width = width; Height = height; GameScroll.ScrollToTop();
+        Width = width; Height = height;
         page = Page.Settings; Refresh(); await Capture(screenshot + ".settings.png");
         DownloadThumbnailsToggle.IsChecked = false; await SaveThumbnailPreference();
         if (Store.Read<Catalog>(Path.Combine(store.Home, "catalog.json")).Settings.DownloadThumbnails || RetryThumbnailsButton.IsEnabled) throw new InvalidOperationException("Thumbnail opt-out did not persist.");
