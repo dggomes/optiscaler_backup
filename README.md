@@ -14,15 +14,24 @@ The examples below assume the executable is named `optibackup.exe`. Run from Pow
 .\optibackup.exe
 ```
 
-The menu scans launchers, lists games, reviews managed files, creates/restores snapshots, imports packages, and checks updates. Game binaries can be nested: select the actual executable, such as a game's `Binaries/Win64` shipping executable, rather than its launcher.
+The menu scans launchers, lists games, reviews managed files, creates/restores snapshots, imports packages, and checks updates. In **Game list**, enter a number or part of a game's name. Name matching ignores case: one match opens the game directly; several matches narrow the list. Enter `*` to clear the filter or `0` to go back.
+
+Game binaries can be nested: select the actual executable, such as a game's `Binaries/Win64` shipping executable, rather than its launcher.
+
+Use the explicit `menu` command when supplying menu input through a pipe. Piped sessions skip startup update checks:
+
+```powershell
+.\optibackup.exe menu
+@('0') | .\optibackup.exe menu
+```
 
 Backups default to `%LOCALAPPDATA%\OptiScalerBackup\backups`. Keep that folder and the catalog safe; they contain the only copies of replaced files retained by this app. See [storage and recovery](docs/storage-format.md).
 
 ## Game snapshots
 
 1. Scan installed launchers or add a game manually.
-2. Select the game, then **Detect and select managed files**. Review detected graphics libraries, proxy DLLs and settings. Nothing is automatically selected for backup.
-3. Add other game-relative paths or explicitly approved settings files outside the game directory. For mods not installed yet, add their expected paths while absent so Original records their absence.
+2. Open the game to automatically detect new standard graphics libraries, proxy DLLs and settings not already managed. The detection flow also offers optional extra game-relative or absolute settings paths.
+3. Review the complete proposed batch, including evidence for ambiguous proxy DLLs and full external settings paths, then approve it once. There are no file-by-file approvals, and nothing is added to management before the batch confirmation. **Detect and select managed files** reruns the same flow. For mods not installed yet, include their expected relative paths while absent so Original records their absence.
 4. Create a named snapshot. Establish **Original** only when you know the current files are clean. Existing mods cannot be converted into pristine originals.
 5. Create more named snapshots after changing settings or libraries. Rename labels at any time.
 6. Preview and confirm restoration. A recovery snapshot is saved before changing files.
@@ -117,7 +126,7 @@ Custom scans group executable-bearing directories heuristically. Inspect the det
 
 ## Updates and configuration
 
-Interactive startup checks for a newer stable release at most once daily and asks before installation. Scripted commands do not run automatic checks. Offline/rate-limit failures do not block normal menu use.
+Interactive startup checks for a newer stable release at most once daily and asks before installation. Scripted commands, including piped `menu` sessions, do not run automatic checks. Offline/rate-limit failures do not block normal menu use.
 
 ```powershell
 .\optibackup.exe update check

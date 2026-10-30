@@ -8,8 +8,8 @@ New-Item -ItemType Directory -Path $root -Force | Out-Null
 function Hash([string]$path) { return (Get-FileHash -Algorithm SHA256 $path).Hash.ToLowerInvariant() }
 function Case([string]$name, [bool]$badHealth, [bool]$recover, [bool]$pendingGame) {
     $folder = Join-Path $root $name
-    $home = Join-Path $folder 'data'
-    $updates = Join-Path $home 'updates'
+    $testDataHome = Join-Path $folder 'data'
+    $updates = Join-Path $testDataHome 'updates'
     New-Item -ItemType Directory -Path $updates -Force | Out-Null
     $dest = Join-Path $folder 'optibackup.exe'
     $download = Join-Path $updates 'download.exe'
@@ -17,10 +17,10 @@ function Case([string]$name, [bool]$badHealth, [bool]$recover, [bool]$pendingGam
     Copy-Item $Executable ($dest + '.previous')
     if ($badHealth) { [IO.File]::WriteAllText($download, 'Intentionally invalid executable for rollback testing') }
     else { Copy-Item $Executable $download }
-    @{ SchemaVersion = 1; Settings = @{ CheckUpdates = $false }; Games = @() } | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $home 'catalog.json')
-    if ($pendingGame) { '{}' | Set-Content (Join-Path $home 'pending.json') }
+    @{ SchemaVersion = 1; Settings = @{ CheckUpdates = $false }; Games = @() } | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $testDataHome 'catalog.json')
+    if ($pendingGame) { '{}' | Set-Content (Join-Path $testDataHome 'pending.json') }
     $job = @{
-        SchemaVersion = 1; Home = $home; Destination = $dest; Download = $download
+        SchemaVersion = 1; Home = $testDataHome; Destination = $dest; Download = $download
         ExpectedHash = (Hash $download); PreviousHash = (Hash $dest); Version = ('v' + $publishedVersion)
         Status = 'staged'; ParentId = 2147483646; Restart = $false
     }

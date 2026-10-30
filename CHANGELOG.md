@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.1] — 2026-10-30
+
+### Added
+
+- Partial-name game search for finding entries in the game catalog.
+- Automatic discovery of standard managed files, optional extra files and external settings, with evidence for ambiguous candidates and a single batch approval.
+
+### Changed
+
+- Preserve existing managed-file selections when adding discovered files.
+- Prevent duplicate managed paths and validate the complete selection before saving any changes.
+
 ## [0.1.0] — 2026-10-30
 
 ### Added

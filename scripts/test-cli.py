@@ -22,8 +22,8 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     (game / 'unrelated.txt').write_text('preserve', encoding='utf-8')
     (external / 'graphics.ini').write_text('quality=1', encoding='utf-8')
 
-    def run(*args, succeeds=True):
-        result = subprocess.run([dotnet, str(cli), '--home', str(home), *args], text=True, input='', capture_output=True)
+    def run(*args, succeeds=True, input_text=""):
+        result = subprocess.run([dotnet, str(cli), '--home', str(home), *args], text=True, input=input_text, capture_output=True)
         if (result.returncode == 0) != succeeds:
             raise AssertionError(f'CLI {args}: {result.returncode}\n{result.stdout}\n{result.stderr}')
         return result
@@ -82,4 +82,28 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     run('unknown-command', succeeds=False)
     run('config', 'set', 'check-updates', 'invalid', succeeds=False)
     run('help')
-print('PASS CLI end-to-end: snapshots, external configs, ZIP review/install, edit protection, rollback, migration and errors')
+    # Drive the actual menu, including ambiguous searches and one bulk approval.
+    for name in ('Cyberpunk 2077', 'Cyberpunk Edgerunners'):
+        folder = root / name
+        folder.mkdir()
+        for file in ('OptiScaler.ini', 'dxgi.dll', 'Engine.ini', 'custom.cfg'):
+            (folder / file).write_text(file, encoding='utf-8')
+        run('games', 'add', name, str(folder))
+    extra = str(external / 'graphics.ini')
+    selected = run('menu', input_text=f'3\nCYB\nedg\ny\ncustom.cfg\n{extra}\n\ny\n0\n0\n')
+    assert selected.stdout.count('Manage this entire selection') == 1
+    assert 'Manage this file' not in selected.stdout
+    chosen = next(g for g in catalog()['Games'] if g['Name'] == 'Cyberpunk Edgerunners')
+    assert len(chosen['Managed']) == 5, selected.stdout + selected.stderr
+    assert len(chosen['ExternalRoots']) == 1
+    before = chosen['Managed']
+    repeated = run('menu', input_text='3\nedg\n1\nn\n0\n0\n')
+    assert next(g for g in catalog()['Games'] if g['Id'] == chosen['Id'])['Managed'] == before
+    declined = run('menu', input_text='3\n2077\nn\nn\n0\n0\n')
+    assert 'Selection cancelled' in declined.stdout
+    assert next(g for g in catalog()['Games'] if g['Name'] == 'Cyberpunk 2077')['Managed'] == []
+    run('menu', input_text='3\n2077\ny\n../outside.ini\n\n')
+    assert next(g for g in catalog()['Games'] if g['Name'] == 'Cyberpunk 2077')['Managed'] == []
+    unmatched = run('menu', input_text='3\nno-such-game\n*\nedg\n0\n0\n')
+    assert 'No games match' in unmatched.stdout
+print('PASS CLI end-to-end: backups, packages, game search, automatic bulk selection, extras, cancellation and validation')

@@ -42,9 +42,8 @@ internal sealed partial class Application
                     case 0: await Command("scan"); break;
                     case 1: await Command("scan", Ask("Folder to scan")); break;
                     case 2:
-                        var games = store.Data.Games.ToList();
-                        var game = Pick("Games", games.Select(g => $"{g.Name} {(Directory.Exists(g.Directory) ? "" : "[unavailable]")} — {g.Directory}").ToList());
-                        if (game >= 0) await GameMenu(games[game].Id);
+                        var game = GamePicker.Select(Console.In, Console.Out, store.Data.Games);
+                        if (game != null) await GameMenu(game.Id);
                         break;
                     case 3: await Command("games", "add", Ask("Game name"), Ask("Game installation folder")); break;
                     case 4:
@@ -64,6 +63,7 @@ internal sealed partial class Application
 
     private async Task GameMenu(string id)
     {
+        await SelectDetected(store.Game(id), automatic: true);
         while (!exitForUpdate)
         {
             try
@@ -106,22 +106,45 @@ internal sealed partial class Application
         }
     }
 
-    private async Task SelectDetected(Game game)
+    private Task SelectDetected(Game game, bool automatic = false)
     {
-        foreach (var candidate in Detection.Files(game, Warn))
+        if (!Directory.Exists(game.Directory))
         {
-            if (game.Managed.Any(t => t.Root == "game" && t.Path.Equals(candidate.Path, StringComparison.OrdinalIgnoreCase))) continue;
-            Console.WriteLine($"\n{candidate.Path} [{candidate.Role}] {candidate.Evidence}");
-            if (Yes("Manage this file")) await Command("files", "add", game.Id, candidate.Path);
-            game = store.Game(game.Id);
+            Console.WriteLine("Game directory is unavailable; reconnect it to detect managed files.");
+            return Task.CompletedTask;
         }
-        foreach (var candidate in Detection.ExternalCandidates(game, Warn))
+        var detected = Detection.Files(game, Warn);
+        var requests = detected.Where(c => !game.Managed.Any(t => t.Root == "game" && t.Path.Equals(c.Path, StringComparison.OrdinalIgnoreCase)))
+            .Select(c => new FileRequest(c.Path)).ToList();
+        var external = Detection.ExternalCandidates(game, Warn).Where(path => !game.Managed.Any(t =>
         {
-            if (game.Managed.Any(t => SafePaths.Resolve(game, t).Equals(candidate, StringComparison.OrdinalIgnoreCase))) continue;
-            if (Yes("Manage external settings file " + candidate)) await Command("files", "add", game.Id, candidate, "--external", "--yes");
-            game = store.Game(game.Id);
+            var root = t.Root == "game" ? game.Directory : game.ExternalRoots[t.Root];
+            return Path.GetFullPath(Path.Combine(root, t.Path)).Equals(path, StringComparison.OrdinalIgnoreCase);
+        })).ToList();
+        requests.AddRange(external.Select(path => new FileRequest(path, true)));
+        if (automatic && requests.Count == 0 && game.Managed.Count > 0) return Task.CompletedTask;
+        Console.WriteLine($"\nDetected {requests.Count} new standard managed files for {game.Name}:");
+        foreach (var candidate in detected.Where(c => requests.Any(r => !r.External && r.Path == c.Path)))
+            Console.WriteLine($"  {candidate.Path} [{candidate.Role}] {candidate.Evidence}{(candidate.ReviewRequired ? " — review this candidate" : "")}");
+        foreach (var file in external) Console.WriteLine("  " + file + " [external settings]");
+        if (Yes("Add any other files to this selection"))
+        {
+            while (true)
+            {
+                var path = Ask("Additional file (game-relative or absolute; blank finishes)");
+                if (path.Length == 0) break;
+                requests.Add(new(path, Path.IsPathFullyQualified(path)));
+            }
         }
-        Console.WriteLine("Add currently absent mod filenames with 'Add a managed file' to record their absence in Original.");
+        if (requests.Count == 0) { Console.WriteLine("No new managed files selected."); return Task.CompletedTask; }
+        var proposal = ManagedFiles.Prepare(game, requests.Distinct(), store.Home, store.PayloadRoot);
+        var added = proposal.Managed.Where(t => !game.Managed.Any(existing => existing.Key == t.Key)).ToList();
+        if (added.Count == 0) { Console.WriteLine("All selected files are already managed."); return Task.CompletedTask; }
+        Console.WriteLine($"\nApprove {added.Count} managed files (including any external paths below):");
+        foreach (var target in added) Console.WriteLine("  " + SafePaths.Resolve(proposal, target));
+        if (Yes("Manage this entire selection")) { store.Put(proposal); Console.WriteLine($"Added {added.Count} managed files."); }
+        else Console.WriteLine("Selection cancelled; managed files unchanged.");
+        return Task.CompletedTask;
     }
 
     private async Task PackageMenu(string id)

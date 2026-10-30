@@ -86,6 +86,7 @@ internal sealed partial class Application(Store store, Engine engine)
     public const string Help = """
         OptiScaler Backup
           optibackup                              Interactive menu
+          optibackup menu                         Explicit menu (also supports piped input)
           optibackup scan [folder ...]            Launchers plus selected folders
           optibackup games list
           optibackup games add <name> <folder> [--exe <relative-path>]
@@ -117,6 +118,7 @@ internal sealed partial class Application(Store store, Engine engine)
     {
         switch (args.At(0))
         {
+            case "menu": args.Count(1, 1); await Menu(); break;
             case "scan":
                 discovery.Merge(store, discovery.Scan(args.Positionals.Skip(1)));
                 Output(GameRows(), args); break;
