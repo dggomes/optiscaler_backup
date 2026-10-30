@@ -36,4 +36,11 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: PATH="/usr/bin:$PATH" gh release create "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 --verify-tag --generate-notes
+        run: |
+          export PATH="/usr/bin:$PATH"
+          if PATH="/usr/bin:$PATH" gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            PATH="/usr/bin:$PATH" gh release upload "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 --clobber
+            PATH="/usr/bin:$PATH" gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
+          else
+            PATH="/usr/bin:$PATH" gh release create "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 --verify-tag --generate-notes
+          fi
