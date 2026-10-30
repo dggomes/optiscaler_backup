@@ -13,6 +13,8 @@ Download either interface from this repository's [GitHub Releases](https://githu
 
 Each is a self-contained executable with the .NET runtime included and an accompanying `.exe.sha256` checksum. Place it in a writable folder outside your game directories. Both interfaces are included from v0.2.0 onward.
 
+Version 0.3.0 refreshes the desktop library and workflows; both executables use the same unchanged schema 2 storage format.
+
 The examples below assume the executable is named `optibackup.exe`. Run from PowerShell:
 
 ```powershell
@@ -40,12 +42,14 @@ Opening v1 data automatically upgrades it to schema 2, retaining `catalog.v1.jso
 
 Run `optibackup-ui-win-x64.exe` on Windows, or build it using the [desktop instructions](src/desktop/README.md). It opens the same library, snapshots and package history as the CLI. Close other sessions using that catalog before launching it.
 
-- Search game names as you type; scan launchers/custom folders or add a game manually.
-- Selecting a game detects new standard-file candidates and shows their count. **Review managed files** opens one batch review with proxy evidence and external paths. Include/exclude candidates, add existing files or absent game-relative paths, then confirm once.
-- In **Versions**, save a named version, establish user-confirmed Original, rename a version, or preview and confirm restoration. **Show files** opens the selected snapshot folder; **Open backups** opens the selected game's snapshot collection when available.
+- Browse a dark card library, 24 games per page, with **All games**, **With backups** and **No backups** filters. Search partial names across the whole library, ignoring case; clear search or reset filters when needed. Artwork uses locally cached Steam covers or executable icons, with name initials when neither is available. The library never downloads artwork.
+- Use `Ctrl+F` for library search, `Escape` to return from a game/settings page, and `F5` to scan installed launchers. Scan custom folders or add games manually. Cards label unavailable drives; file-changing actions require an available game folder.
+- Opening a game detects new standard-file candidates and shows their count. **Files → Review files…** includes current selections and new candidates in one batch, with proxy evidence and external paths. Add existing files or absent relative paths; uncheck files to stop tracking them in future backups. Existing snapshots remain intact.
+- The setup guide helps choose files and establish a clean, user-confirmed **Original**. In **Backups**, save/rename versions, preview restoration, or use **Show files** to open the selected folder. Recovery backups are hidden by default; enable **Show recovery backups** to inspect them. Row selections survive refreshes, and selection-dependent actions stay disabled until a row is chosen.
 - In **Packages**, review/edit ZIP destinations and exclusions before import, then separately preview installation. Rename packages and roll back active layers with the same overlap ordering and edited-file protection as the CLI.
+- **Settings → Change location…** copies and verifies backup storage before switching locations and keeps the old copies. The settings page also opens/copies the backup path and opens app data. **Open backups** opens the current game's snapshot collection when available.
 
-Discovery, hashing and file operations run off the UI thread and are serialized. Startup attempts pending game-file recovery before opening the library. **Release downloads** opens GitHub Releases in a browser; desktop self-update is not implemented. Automatic update checks/installations remain CLI-only. Advanced settings, including backup location and archive limits, remain available through CLI `config` commands; close the desktop app before using them.
+Discovery, hashing and file operations run off the UI thread and are serialized. Startup attempts pending game-file recovery before opening the library. Operation errors appear inline with a dismiss action. **Release downloads** opens GitHub Releases in a browser; desktop self-update is not implemented. Automatic update checks/installations remain CLI-only. Other advanced settings, including archive limits, remain available through CLI `config` commands; close the desktop app before using them.
 
 ## Game snapshots
 

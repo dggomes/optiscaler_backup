@@ -22,8 +22,10 @@ try {
     Compress-Archive -Path (Join-Path $testGame 'OptiScaler.ini') -DestinationPath $testZip
     $map = Join-Path $testRoot 'mapping.json'
     @{ 'OptiScaler.ini' = 'OptiScaler.ini' } | ConvertTo-Json | Set-Content $map
-    $package = (Invoke-Cli -CommandArgs @('packages','import',$game.Id,$testZip,'Graphics settings','1','--map',$map,'--yes')) | ConvertFrom-Json
+    $null = Invoke-Cli -CommandArgs @('packages','import',$game.Id,$testZip,'Graphics settings','1','--map',$map,'--yes')
+    $package = ((Invoke-Cli -CommandArgs @('packages','list',$game.Id)) | ConvertFrom-Json).Packages[0]
     $null = Invoke-Cli -CommandArgs @('packages','install',$game.Id,$package.Id,'--yes')
+    'quality=custom' | Set-Content (Join-Path $testGame 'OptiScaler.ini')
     foreach ($index in 1..25) {
         $folder = Join-Path $testRoot ('library/game-' + $index)
         New-Item -ItemType Directory -Path $folder -Force | Out-Null

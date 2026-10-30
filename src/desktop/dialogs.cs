@@ -59,13 +59,13 @@ internal abstract class ReviewDialog : Window
             ElementStyle = text
         };
     }
-    protected static DataGridTemplateColumn IncludeColumn()
+    protected static DataGridTemplateColumn IncludeColumn(string field = "Path")
     {
         var box = new FrameworkElementFactory(typeof(CheckBox));
         box.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, new Binding("Include") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
         box.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         box.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        box.SetValue(System.Windows.Automation.AutomationProperties.NameProperty, "Include file");
+        box.SetBinding(System.Windows.Automation.AutomationProperties.NameProperty, new Binding(field));
         return new DataGridTemplateColumn { Header = "Use", Width = 58, CellTemplate = new DataTemplate { VisualTree = box } };
     }
     protected static void Commit(DataGrid table) { table.CommitEdit(DataGridEditingUnit.Cell, true); table.CommitEdit(DataGridEditingUnit.Row, true); }
@@ -238,7 +238,7 @@ internal sealed class PackageReviewDialog : ReviewDialog
         var left = new StackPanel { Margin = new Thickness(0, 0, 15, 0) }; left.Children.Add(new TextBlock { Text = "Package name" }); left.Children.Add(name);
         var right = new StackPanel(); right.Children.Add(new TextBlock { Text = "Version label" }); right.Children.Add(version); Grid.SetColumn(right, 1);
         labels.Children.Add(left); labels.Children.Add(right); Body.Children.Add(labels);
-        table.ItemsSource = rows; table.Columns.Add(IncludeColumn());
+        table.ItemsSource = rows; table.Columns.Add(IncludeColumn("Entry"));
         table.Columns.Add(Column("Archive entry", "Entry", 210)); table.Columns.Add(Column("Destination — edit here", "Destination", -1, false)); table.Columns.Add(Column("Existing matches", "Candidates", 180));
         Grid.SetRow(table, 1); Body.Children.Add(table);
     }
