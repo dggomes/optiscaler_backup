@@ -17,7 +17,7 @@
 - Show startup progress while opening storage and recovering unfinished operations in the background.
 - Desktop and CLI ship as version 0.3.0; the shared core and schema 2 storage format are unchanged.
 
-Release validation is pending. Real gaming-PC acceptance testing remains pending.
+Validated with 44 passing Windows service tests, CLI end-to-end checks, native updater integration tests and desktop behavior/render checks, including fresh catalogs, pagination, offline actions and dialog layouts. Linux and macOS pass 42 service tests with two Windows-only skips. Real gaming-PC acceptance testing remains pending.
 
 ## [0.2.0] — 2026-10-30
 

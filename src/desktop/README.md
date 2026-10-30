@@ -2,7 +2,7 @@
 
 WPF frontend for the shared .NET 10 core. It uses the same catalog and backups as the CLI, including package installation history. Only one session may open a data home at a time; close the CLI before starting the desktop app.
 
-Version 0.3.0 introduces a dark card library and guided game workflows. Both CLI and desktop executables remain on schema 2; this release does not add another storage migration.
+Version 0.3.0 introduces a dark card library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick). Both CLI and desktop executables remain on schema 2; this release does not add another storage migration.
 
 ## Build and run
 
