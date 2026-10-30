@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.2] — 2026-10-30
+
+### Fixed
+
+- Recover stale `session.lock` markers at startup only after acquiring the exclusive OS lock, then remove the marker when the session closes. Read-only leftovers are recovered only after an exclusive read guard succeeds; live old or new app sessions cannot be bypassed.
+- Retry briefly during app/updater restarts and recheck lock paths for links or junctions before recovery.
+- Show lock-holder application names and PIDs in Windows CLI/desktop errors using Restart Manager, without forcing another process to close.
+- Compare and display all four version components when present, including `0.3.0.1`, so companion repair, downgrade protection and updater health checks do not truncate revision numbers.
+
+### Added
+
+- Development foundation for the future manager: independently implemented immutable contracts for source provenance, game analysis, resolved components and file-operation plans.
+- Upstream source registry distinguishing released OptiPatcher compatibility, preview/main observations, the official OptiScaler wiki and reference-only repositories.
+- Bounded, SHA-256-verified, display-only JSON compatibility-pack format 1 with separate `data-v` tags, strict field validation and source evidence checks.
+- Conservative matching by exact launcher ID or a unique exact normalized title, preserving edition distinctions, conflicting observations and Unknown / Not applicable support states.
+
+This is the first development slice of the manager work ([#12](https://github.com/dggomes/optiscaler_backup/issues/12), under [#9](https://github.com/dggomes/optiscaler_backup/issues/9)), not the full Phase A implementation. CLI/UI integration, feed refresh or activation, component installation and schema 3 are not included.
+
+Local validation: 61 service tests pass with two Windows-only skips, plus CLI/menu checks. Windows CI also covers native CLI/WPF startup with stale read-only markers, live-owner reporting and updater recovery. Real gaming-PC acceptance remains pending.
+
 ## [0.3.1] — 2026-10-30
 
 ### Added

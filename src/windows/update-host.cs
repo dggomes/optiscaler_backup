@@ -81,9 +81,9 @@ public static class UpdateHost
     {
         if (string.IsNullOrWhiteSpace(release.Tag)) throw new IOException("Invalid release version.");
         if (Releases.NewerStable(release.Tag, Releases.Current)) return true;
-        if (!Version.TryParse(release.Tag.TrimStart('v', 'V'), out var wanted) || wanted.ToString(3) != Releases.Current.ToString(3) || !CanSelfUpdate) return false;
+        if (!Version.TryParse(release.Tag.TrimStart('v', 'V'), out var wanted) || !Releases.VersionEquals(wanted, Releases.Current) || !CanSelfUpdate) return false;
         return Targets().Any(target => !Version.TryParse(FileVersionInfo.GetVersionInfo(target.Destination).FileVersion, out var version)
-            || new Version(version.ToString(3)) < new Version(Releases.Current.ToString(3)));
+            || Releases.CompareVersions(version, Releases.Current) < 0);
     }
     public static async Task Prepare(Store store, Releases releases, ReleaseInfo release, CancellationToken cancellation = default)
     {
@@ -91,7 +91,7 @@ public static class UpdateHost
         if (!Version.TryParse(release.Tag.TrimStart('v', 'V'), out var desired)) throw new IOException("Invalid release version.");
         foreach (var target in targets)
             if (Version.TryParse(FileVersionInfo.GetVersionInfo(target.Destination).FileVersion, out var installed)
-                && new Version(installed.ToString(3)) > new Version(desired.ToString(3)))
+                && Releases.CompareVersions(installed, desired) > 0)
                 throw new IOException("An installed companion is newer than this release; it will not be downgraded: " + target.Destination);
         var directory = Path.Combine(store.Home, "updates", Format.Id());
         var downloads = new Dictionary<string, VerifiedDownload>();
@@ -161,7 +161,7 @@ public static class UpdateHost
             ?? throw new IOException("Health probe is not an updater target.");
         if (AssetForPath(file.Destination) != component || SafePaths.Hash(Environment.ProcessPath!) != file.ExpectedHash)
             throw new IOException("Updated executable/component hash does not match.");
-        if (!Version.TryParse(job.Version.TrimStart('v', 'V'), out var expected) || expected.ToString(3) != Releases.Current.ToString(3))
+        if (!Version.TryParse(job.Version.TrimStart('v', 'V'), out var expected) || !Releases.VersionEquals(expected, Releases.Current))
             throw new IOException("Updated executable version does not match its release tag.");
         var catalog = Path.Combine(job.Home, "catalog.json");
         if (File.Exists(catalog) && !Store.SupportedSchema(Store.Read<Catalog>(catalog).SchemaVersion))

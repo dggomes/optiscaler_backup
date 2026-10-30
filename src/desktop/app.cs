@@ -54,7 +54,7 @@ public sealed class App : Application
             void Fail(Exception error)
             {
                 if (screenshot != null) File.WriteAllText(screenshot + ".error", error.ToString());
-                else MessageBox.Show(error.Message + "\nClose other app sessions and resolve pending recovery before retrying.", "Cannot open OptiScaler Backup", MessageBoxButton.OK, MessageBoxImage.Error);
+                else MessageBox.Show(SessionDiagnostics.Message(error) + "\nClose other app sessions and resolve pending recovery before retrying.", "Cannot open OptiScaler Backup", MessageBoxButton.OK, MessageBoxImage.Error);
                 opening = false; app.Shutdown(1);
             }
             app.DispatcherUnhandledException += (_, e) => { e.Handled = true; Fail(e.Exception); };
@@ -97,7 +97,7 @@ public sealed class App : Application
                 try { SafePaths.NoLinks(screenshot); File.WriteAllText(screenshot + ".error", error.ToString()); }
                 catch (Exception logError) when (logError is IOException or UnauthorizedAccessException) { Console.Error.WriteLine(logError.Message); }
             }
-            if (!args.Contains("--smoke-test") && !args.Contains("--update-helper") && !args.Contains("--update-health")) MessageBox.Show(error.Message + "\nClose other OptiScaler Backup sessions and resolve any pending recovery before retrying.", "Cannot open OptiScaler Backup", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (!args.Contains("--smoke-test") && !args.Contains("--update-helper") && !args.Contains("--update-health")) MessageBox.Show(SessionDiagnostics.Message(error) + "\nClose other OptiScaler Backup sessions and resolve any pending recovery before retrying.", "Cannot open OptiScaler Backup", MessageBoxButton.OK, MessageBoxImage.Error);
             return 1;
         }
     }

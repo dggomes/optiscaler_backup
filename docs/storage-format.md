@@ -11,7 +11,7 @@ Default home: `%LOCALAPPDATA%\OptiScalerBackup`. `--home <folder>` selects anoth
 | `catalog.json` | Schema version, settings, games, approved roots, snapshot/package manifests and installation history |
 | `catalog.v1.json` | Original schema 1 catalog retained during conversion |
 | `game-inventories.json` | Auxiliary version 1 snapshot-ID-to-inventory-blob index |
-| `session.lock` | Exclusive process-wide session lock |
+| `session.lock` | Exclusive OS-held session marker; reset after acquisition and removed on handle close |
 | `pending.json` | Game-file transaction journal retained until commit/recovery finishes |
 | `rename-pending.json` | Snapshot-folder rename journal retained until catalog commit/recovery finishes |
 | `errors.log` | Timestamped CLI/menu errors |
@@ -37,6 +37,14 @@ Every named snapshot, package pre-install backup and recovery snapshot has its o
 Snapshot files are marked read-only. This discourages accidental editing; it is not a security boundary. Do not edit them. Every restoration verifies the stored hashes before changing game files and rejects modified/missing payloads. Absent files have manifest entries but no physical file copy. Snapshots with no present files still have a folder.
 
 Changing the backup location through the CLI copies and verifies referenced snapshot files and blobs, preserves read-only snapshot attributes, then switches the catalog. Old copies remain at the previous location. Snapshot/package content is not automatically pruned; inspection can cache blobs that never become an imported package.
+
+## Session ownership and stale markers
+
+The exclusive OS file handle, not marker existence or a recorded PID, determines ownership. `SessionLock.Open` rejects linked lock paths, retries for about one second to allow a closing process to finish, then either acquires exclusivity or reports the data-folder/access error. After acquisition it resets marker metadata to the current `ProcessId`, `OpenedUtc` and `Executable`. The handle uses delete-on-close, including OS cleanup after process termination.
+
+A leftover read-only app marker is handled by first acquiring an exclusive read handle, clearing only that file's `ReadOnly` attribute and reacquiring the normal writable lock. No ACL, catalog, backup or game-file permission is modified. A live legacy handle is never ignored or bypassed. Ordinary access/ACL failures still require correcting access to the actual data folder.
+
+CLI/desktop errors use Windows Restart Manager in read-only diagnostic mode to identify active holders by name/PID when available. It does not shut down or kill owners. Close an identified app normally or let its updater finish, then retry; do not manually delete the lock while a session is active. Unlocked stale markers do not require manual deletion.
 
 ## Catalog and manifests
 
@@ -133,6 +141,8 @@ CLI and desktop use the same updater. Catalog `Settings.CheckUpdates` and `Setti
 Only recognized installed CLI/desktop filenames in the initiating executable's directory are targeted: `optibackup.exe`, `optibackup-win-x64.exe`, `optibackup-ui.exe` and `optibackup-ui-win-x64.exe`. Components are selected from the same release and each download is verified against its own checksum. Missing components are not installed; copies in other folders are not updated. Running companions, pending game/rename recovery and unwritable destinations block updating.
 
 The helper waits for the initiating process to exit, acquires the session lock, retains a `.previous` copy of every target and stages replacements. It then health-checks every component's hash/version and supported catalog metadata without opening another session. The desktop probe additionally loads WPF runtime/theme resources. Normal application startup performs any required catalog conversion.
+
+Version display, release health checks and companion comparisons retain all significant components, including the fourth component in hotfix versions such as `0.3.0.1`.
 
 Any failed replacement/health check or interrupted replacement restores the entire target group, preventing a partially upgraded CLI/desktop pair. Pending jobs are recovered on the next launch. The helper archives a terminal job as `updates/last-update.json` before restart, so an older executable after rollback does not encounter an unsupported paired-job journal. Restart passes the original `--home` value to the initiating interface.
 

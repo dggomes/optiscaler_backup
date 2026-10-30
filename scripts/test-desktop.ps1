@@ -14,6 +14,10 @@ function Invoke-Cli([string[]]$CommandArgs) {
     return $output
 }
 function Invoke-Desktop([string]$DataHome, [string]$ImagePath) {
+    New-Item -ItemType Directory -Path $DataHome -Force | Out-Null
+    $staleLock = Join-Path $DataHome 'session.lock'
+    'leftover startup marker' | Set-Content $staleLock
+    [IO.File]::SetAttributes($staleLock, [IO.FileAttributes]::ReadOnly)
     $process = Start-Process -FilePath $Executable -ArgumentList @('--home',('"'+${DataHome}+'"'),'--smoke-test',('"'+${ImagePath}+'"')) -PassThru
     $null = $process.Handle
     if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Desktop smoke test timed out' }
@@ -22,6 +26,7 @@ function Invoke-Desktop([string]$DataHome, [string]$ImagePath) {
         if (Test-Path (${ImagePath}+'.error')) { Get-Content (${ImagePath}+'.error') | Write-Host }
         throw "Desktop smoke exited with $($process.ExitCode)"
     }
+    if (Test-Path $staleLock) { throw "Desktop left a session marker after closing" }
 }
 
 try {
@@ -71,5 +76,5 @@ try {
     foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.files-compact.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.update.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
         if (-not (Test-Path $path) -or (Get-Item $path).Length -lt 1000) { throw "Desktop render missing/empty: $path" }
     }
-    Write-Host 'PASS desktop startup, pagination, global search, navigation, selection retention, 54-file compact workspace/filter, offline actions, cached thumbnail display/preferences, update controls/busy guard, recovery filtering and dialog rendering'
+    Write-Host 'PASS desktop stale/read-only lock startup and close cleanup, pagination, global search, navigation, selection retention, 54-file compact workspace/filter, offline actions, cached thumbnail display/preferences, update controls/busy guard, recovery filtering and dialog rendering'
 } finally { Remove-Item $testRoot -Recurse -Force }

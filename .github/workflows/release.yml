@@ -16,7 +16,7 @@ jobs:
       - name: Validate stable version tag
         shell: pwsh
         run: |
-          if ($env:GITHUB_REF_NAME -notmatch '^v(\d+\.\d+\.\d+)$') { throw 'Use a stable vMAJOR.MINOR.PATCH tag' }
+          if ($env:GITHUB_REF_NAME -notmatch '^v(\d+\.\d+\.\d+(?:\.\d+)?)$') { throw 'Use a stable vMAJOR.MINOR.PATCH[.HOTFIX] tag' }
           "RELEASE_VERSION=$($Matches[1])" | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Build and test
         run: npm run agent:pre-commit

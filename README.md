@@ -15,7 +15,9 @@ Each is a self-contained executable with the .NET runtime included and an accomp
 
 Keep the CLI and desktop executables in the same folder if you want either interface to update both together. Supported names are `optibackup.exe` / `optibackup-win-x64.exe` and `optibackup-ui.exe` / `optibackup-ui-win-x64.exe`. Updates include only recognized executables already present there; missing components and copies in other folders are not installed or updated.
 
-Version 0.3.1 adds compact portrait library cards, portrait-first thumbnails and shared CLI/desktop self-updates. The backup format remains schema 2; thumbnail-cache schema 1 is also unchanged.
+Version 0.3.2 fixes startup with leftover session-lock markers and improves active-owner diagnostics. It retains the compact portrait library and shared CLI/desktop updater; backup schema 2 and thumbnail-cache schema 1 are unchanged. Manager compatibility contracts remain an internal foundation, with no compatibility UI or automatic manager installation feature.
+
+For the older v0.3.0 interface, the separate [v0.3.0.1 hotfix](https://github.com/dggomes/optiscaler_backup/releases/tag/v0.3.0.1) carries the minimal lock repair. Download that classic desktop executable manually; this hotfix does not add shared desktop self-update or later interface features to the older line.
 
 The examples below assume the executable is named `optibackup.exe`. Run from PowerShell:
 
@@ -39,6 +41,12 @@ Backups default to `%LOCALAPPDATA%\OptiScalerBackup\backups`. Named versions and
 Snapshot files are read-only and verified against their recorded hashes before restoration. Do not edit them; modified payloads block restoration before game files change. Full copies use more disk space than deduplicated blobs. Keep the snapshot folders and catalog safe; see [storage and recovery](docs/storage-format.md).
 
 Opening v1 data automatically upgrades it to schema 2, retaining `catalog.v1.json` and old blobs. The upgrade needs space for full copies of every existing snapshot and recovery snapshot. This is a one-way format upgrade: v0.1.x cannot read the upgraded catalog. If conversion fails, the original catalog remains unchanged and the app reports the reason.
+
+### Startup reports `session.lock`
+
+A leftover marker file alone no longer blocks startup: the app first acquires the exclusive OS handle, then resets stale metadata and removes the marker when the handle closes. A stale read-only marker is recovered automatically only after exclusive access; no manual deletion is needed. Startup retries briefly (about one second) for a closing session.
+
+If another app/updater still holds the lock, close that app normally or let its update finish, then retry. Windows errors include the data folder and, when discoverable, the holder's name/PID. **Do not delete `session.lock` while a session is active**; active legacy handles are never bypassed, and diagnostics do not shut down or kill processes. If no holder is identified and access still fails, correct access to the reported data folder. The repair does not change folder ACLs, game files or catalog permissions, and linked lock paths are rejected.
 
 ## Native Windows interface
 
@@ -193,6 +201,8 @@ The shared updater selects installed same-folder CLI/desktop components from one
 
 Self-update requires published Windows x64 executables with the supported names in a writable folder. Close running companion copies first. Pending game/rename recovery blocks updates; permissions are not elevated. Development builds can check releases but cannot self-install. An up-to-date component can also bring an older same-folder companion to the same release.
 
+Four-component hotfix versions such as `0.3.0.1` retain their fourth component in version display, health checks and companion comparisons.
+
 Checksums detect corruption; they are published beside the executable and are not independent signatures or protection against a compromised release account. There is no automatic mod download or system-driver installation.
 
 ## Build and validation
@@ -233,6 +243,8 @@ Run `artifacts/desktop/optibackup-ui.exe` on Windows. WPF cannot run on macOS/Li
 Node.js is needed only for repository guardrails (`npm run agent:preflight`, `npm run agent:pre-commit`, `npm run agent:session-end`); it is not an application dependency. Windows CI also runs `scripts/test-updater.ps1` against the published executable.
 
 Architecture: `src/core` contains storage, snapshots, transactions, packages and release fetching; `src/windows` contains launcher adapters, detection, thumbnail fetching/cache and updater hosting; `src/cli` provides menus/commands; `src/desktop` provides WPF windows, background thumbnail coordination and review dialogs. The core has no UI dependency.
+
+An additional [manager-data foundation](docs/manager-data-format.md) defines immutable, display-only compatibility packs, source provenance and future operation-plan contracts. It has no CLI/UI feature, network refresh or activation/execution yet; existing schema 2 backups remain unaffected.
 
 Before a release, verify on a real Windows gaming PC:
 
