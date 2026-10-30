@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../core/OptiScalerBackup.Core.csproj" /></ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+.context/
+**/bin/
+**/obj/
+artifacts/
+.env
+*.log
+.DS_Store
