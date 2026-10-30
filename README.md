@@ -1,6 +1,6 @@
 # OptiScaler Backup
 
-Windows x64 CLI for named game-settings snapshots and reversible ZIP package installs. Interactive menus and scriptable commands share a reusable .NET 10 core for a future desktop UI.
+Windows x64 utility for named game-settings snapshots and reversible ZIP package installs. The released CLI and native WPF desktop interface share the same .NET 10 core and catalog. The desktop interface is available to build from source; no packaged desktop release is published yet.
 
 This is an independent backup utility, not an official OptiScaler installer. It manages selected game files and settings, not Windows GPU drivers or driver control-panel profiles.
 
@@ -26,6 +26,17 @@ Use the explicit `menu` command when supplying menu input through a pipe. Piped 
 ```
 
 Backups default to `%LOCALAPPDATA%\OptiScalerBackup\backups`. Keep that folder and the catalog safe; they contain the only copies of replaced files retained by this app. See [storage and recovery](docs/storage-format.md).
+
+## Native Windows interface
+
+Build and run the desktop app on Windows using the [desktop instructions](src/desktop/README.md). It opens the same library, snapshots and package history as the CLI. Close other sessions using that catalog before launching it.
+
+- Search game names as you type; scan launchers/custom folders or add a game manually.
+- Selecting a game detects new standard-file candidates and shows their count. **Review managed files** opens one batch review with proxy evidence and external paths. Include/exclude candidates, add existing files or absent game-relative paths, then confirm once.
+- In **Versions**, save a named version, establish user-confirmed Original, rename a version, or preview and confirm restoration.
+- In **Packages**, review/edit ZIP destinations and exclusions before import, then separately preview installation. Rename packages and roll back active layers with the same overlap ordering and edited-file protection as the CLI.
+
+Discovery, hashing and file operations run off the UI thread and are serialized. Startup attempts pending game-file recovery before opening the library. **Release downloads** opens GitHub Releases in a browser; desktop self-update is not implemented. Automatic update checks/installations remain CLI-only. Advanced settings, including backup location and archive limits, remain available through CLI `config` commands; close the desktop app before using them.
 
 ## Game snapshots
 
@@ -164,9 +175,18 @@ dotnet publish src/cli -c Release -r win-x64 --self-contained true -p:PublishSin
 
 Use `artifacts/win-x64/optibackup.exe` on Windows. Custom-folder operations and core tests can run on other operating systems; Windows registry discovery, process checks and executable replacement require Windows.
 
+Build/publish the desktop app separately; it is excluded from the cross-platform solution:
+
+```powershell
+dotnet build src/desktop/optiscaler-backup-desktop.csproj -c Release
+dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x64 --self-contained true -o artifacts/desktop
+```
+
+Run `artifacts/desktop/optibackup-ui.exe` on Windows and keep its publish folder together. WPF cannot run on macOS/Linux. Windows startup/render smoke coverage is being added; a cross-build alone does not verify runtime behavior or real-game compatibility.
+
 Node.js is needed only for repository guardrails (`npm run agent:preflight`, `npm run agent:pre-commit`, `npm run agent:session-end`); it is not an application dependency. Windows CI also runs `scripts/test-updater.ps1` against the published executable.
 
-Architecture: `src/core` contains storage, snapshots, transactions, packages and release fetching; `src/windows` contains launcher adapters, detection and updater hosting; `src/cli` provides menus/commands. The core has no UI dependency.
+Architecture: `src/core` contains storage, snapshots, transactions, packages and release fetching; `src/windows` contains launcher adapters, detection and updater hosting; `src/cli` provides menus/commands; `src/desktop` provides WPF windows and review dialogs. The core has no UI dependency.
 
 Before a release, verify on a real Windows gaming PC:
 

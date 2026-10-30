@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Native WPF desktop client with a searchable game catalog and batch review of discovered managed files.
+- Desktop actions to capture, rename and preview restoration of named snapshots.
+- Reviewed ZIP import, package installation and renaming, and layered package rollback from the desktop client.
+- Shared catalog, payloads and journal recovery with the CLI; background operations keep lengthy file work off the UI thread.
+
+The desktop client has not been released. Windows runtime smoke testing is pending.
+
 ## [0.1.1] — 2026-10-30
 
 ### Added
@@ -26,4 +37,4 @@
 - GitHub Releases update checks and confirmed installation for published Windows executables, with checksum validation and executable rollback.
 - Configurable backup storage, update checks and archive limits.
 
-Real Windows-game acceptance testing is still pending; launcher compatibility and executable replacement have not yet been verified against a real gaming installation.
+CLI 0.1.1 Windows/Linux CI and the release workflow succeeded. Real gaming-PC acceptance testing is still pending, including launcher compatibility and executable replacement against an actual game installation.
