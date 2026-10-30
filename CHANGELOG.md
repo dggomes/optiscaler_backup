@@ -18,7 +18,7 @@
 
 This is the first development slice of the manager work ([#12](https://github.com/dggomes/optiscaler_backup/issues/12), under [#9](https://github.com/dggomes/optiscaler_backup/issues/9)), not the full Phase A implementation. CLI/UI integration, feed refresh or activation, component installation and schema 3 are not included.
 
-macOS validation: 61 service tests passed with two Windows-only skips. Windows validation and real gaming-PC acceptance testing remain pending.
+Local validation: 61 service tests pass with two Windows-only skips, plus CLI/menu checks. Windows CI also covers native CLI/WPF startup with stale read-only markers, live-owner reporting and updater recovery. Real gaming-PC acceptance remains pending.
 
 ## [0.3.1] — 2026-10-30
 
