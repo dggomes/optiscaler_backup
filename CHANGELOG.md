@@ -1,6 +1,13 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.2] — 2026-10-30
+
+### Fixed
+
+- Recover stale `session.lock` markers at startup only after acquiring the exclusive OS lock, then remove the marker when the session closes. Read-only leftovers are recovered only after an exclusive read guard succeeds; live old or new app sessions cannot be bypassed.
+- Retry briefly during app/updater restarts and recheck lock paths for links or junctions before recovery.
+- Show lock-holder application names and PIDs in Windows CLI/desktop errors using Restart Manager, without forcing another process to close.
+- Compare and display all four version components when present, including `0.3.0.1`, so companion repair, downgrade protection and updater health checks do not truncate revision numbers.
 
 ### Added
 
@@ -10,6 +17,8 @@
 - Conservative matching by exact launcher ID or a unique exact normalized title, preserving edition distinctions, conflicting observations and Unknown / Not applicable support states.
 
 This is the first development slice of the manager work ([#12](https://github.com/dggomes/optiscaler_backup/issues/12), under [#9](https://github.com/dggomes/optiscaler_backup/issues/9)), not the full Phase A implementation. CLI/UI integration, feed refresh or activation, component installation and schema 3 are not included.
+
+macOS validation: 61 service tests passed with two Windows-only skips. Windows validation and real gaming-PC acceptance testing remain pending.
 
 ## [0.3.1] — 2026-10-30
 

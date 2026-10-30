@@ -18,6 +18,10 @@ public sealed class Releases(HttpClient client, string assetName = Releases.Asse
     public const string UiAsset = "optibackup-ui-win-x64.exe";
     public static Version Current => typeof(Releases).Assembly.GetName().Version!;
 
+    public static string DisplayVersion => Current.Revision > 0 ? Current.ToString(4) : Current.ToString(3);
+    public static bool VersionEquals(Version left, Version right) => CompareVersions(left, right) == 0;
+    public static int CompareVersions(Version left, Version right) => Normalize(left).CompareTo(Normalize(right));
+
     public static bool NewerStable(string tag, Version current) => !string.IsNullOrWhiteSpace(tag) && !tag.Contains('-') &&
         Version.TryParse(tag.TrimStart('v', 'V'), out var version) && Normalize(version) > Normalize(current);
     private static Version Normalize(Version v) => new(v.Major, Math.Max(v.Minor, 0), Math.Max(v.Build, 0), Math.Max(v.Revision, 0));

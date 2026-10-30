@@ -16,7 +16,7 @@ internal static class Program
             var parsed = new Arguments(args);
             home = Path.GetFullPath(parsed.Get("home") ?? home);
             if (parsed.Positionals.FirstOrDefault() is "help" || parsed.Has("help")) { Console.WriteLine(Application.Help); return 0; }
-            if (parsed.Has("version")) { Console.WriteLine(Releases.Current.ToString(3)); return 0; }
+            if (parsed.Has("version")) { Console.WriteLine(Releases.DisplayVersion); return 0; }
             using var store = new Store(home);
             if (OperatingSystem.IsWindows() && UpdateHost.ResumePending(home))
             { Console.Error.WriteLine("Finishing interrupted application update recovery; this process will exit."); return 0; }
@@ -34,7 +34,7 @@ internal static class Program
         }
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or JsonException or ArgumentException or HttpRequestException or TaskCanceledException or System.ComponentModel.Win32Exception)
         {
-            Console.Error.WriteLine($"Error: {e.Message}");
+            Console.Error.WriteLine($"Error: {SessionDiagnostics.Message(e)}");
             try
             {
                 SafePaths.NoLinks(home);
@@ -377,7 +377,7 @@ internal sealed partial class Application(Store store, Engine engine)
         using var checkTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var release = await releases.Check(checkTimeout.Token, includeCurrent: true);
         UpdateHost.RememberRelease(store.Home, release);
-        if (release == null || !UpdateHost.NeedsUpdate(release)) { if (!startup) Output(new { Current = Releases.Current.ToString(3), Update = "No newer stable release" }, args); return; }
+        if (release == null || !UpdateHost.NeedsUpdate(release)) { if (!startup) Output(new { Current = Releases.DisplayVersion, Update = "No newer stable release" }, args); return; }
         Output(release, args);
         if (startup)
         {

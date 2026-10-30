@@ -2,11 +2,15 @@
 
 WPF frontend for the shared .NET 10 core. It uses the same catalog and backups as the CLI, including package installation history. Only one session may open a data home at a time; close the CLI before starting the desktop app.
 
+Version 0.3.2 recovers stale session markers automatically after exclusive acquisition and reports the data folder plus active Windows holder name/PID when available. Briefly closing sessions are retried; active sessions are never bypassed. Close the owner normally or let its update finish rather than deleting the lock. Read-only recovery changes only the stale marker's attribute; other access failures require fixing data-folder access. See [startup troubleshooting](../../README.md#startup-reports-sessionlock).
+
 Version 0.3.1 uses a compact portrait library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick), plus shared CLI/desktop self-updates. Backup schema 2 and thumbnail-cache schema 1 remain unchanged; this release does not add another storage migration.
 
 ## Build and run
 
 Download the self-contained `optibackup-ui-win-x64.exe` and its `.exe.sha256` checksum from [GitHub Releases](https://github.com/dggomes/optiscaler_backup/releases), available from v0.2.0. Run the executable on Windows; no .NET SDK/runtime installation is required for release builds.
+
+Users retaining the older v0.3.0 interface can manually download the separate v0.3.0.1 lock-only hotfix. That classic line does not gain the newer shared desktop updater or later UI behavior; the rest of this document describes the current line.
 
 Keep it beside `optibackup-win-x64.exe` to update both interfaces together. Short names `optibackup-ui.exe` and `optibackup.exe` are also supported. Only recognized executables already in that folder are updated; copies elsewhere and uninstalled components are excluded.
 

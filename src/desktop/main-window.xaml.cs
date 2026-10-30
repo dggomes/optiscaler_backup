@@ -86,7 +86,7 @@ public partial class MainWindow : Window
             AutomaticUpdatesToggle.IsChecked = store.Data.Settings.CheckUpdates;
             DownloadThumbnailsToggle.IsChecked = store.Data.Settings.DownloadThumbnails;
             RetryThumbnailsButton.IsEnabled = store.Data.Settings.DownloadThumbnails;
-            BackupLocationText.Text = store.PayloadRoot; VersionText.Text = "OptiScaler Backup " + Releases.Current.ToString(3);
+            BackupLocationText.Text = store.PayloadRoot; VersionText.Text = "OptiScaler Backup " + Releases.DisplayVersion;
             if (selectedId != null) RefreshDetails();
         }
         finally { refreshing = false; UpdateActions(); }

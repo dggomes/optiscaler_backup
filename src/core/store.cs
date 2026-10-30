@@ -17,7 +17,7 @@ public sealed partial class Store : IDisposable
         Home = Path.GetFullPath(home);
         SafePaths.NoLinks(Home);
         Directory.CreateDirectory(Home);
-        gate = new FileStream(Path.Combine(Home, "session.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        gate = SessionLock.Open(Home);
         try
         {
             Data = File.Exists(Path.Combine(Home, "catalog.json")) ? Read<Catalog>(Path.Combine(Home, "catalog.json")) : new();

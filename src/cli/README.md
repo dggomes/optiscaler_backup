@@ -8,6 +8,8 @@ Executable entrypoint and user interaction for OptiScaler Backup. No backup or p
 
 Running without arguments opens menus when input is interactive; explicit `menu` also supports piped input. `help` lists commands. Piped menu sessions and other scripted commands skip startup update checks.
 
+Session-lock errors report the data home and, on Windows when discoverable, the active holder's name/PID. Startup retries a closing session briefly, resets unlocked stale metadata only after exclusive access, and removes its marker on close. Stale read-only markers need no manual deletion; only their `ReadOnly` attribute is cleared under exclusive access. Active legacy handles are never bypassed. Close the owner normally or wait for its updater; do not delete an active lock. Other access/ACL errors require fixing the reported data-folder access. `--version` preserves four-component hotfix versions such as `0.3.0.1`.
+
 The game list accepts numbers or case-insensitive partial names. A unique name match opens directly; multiple matches narrow the list; `*` clears the filter. Opening a game detects new standard managed-file candidates, offers optional extra relative/absolute paths, displays the complete proposed batch with proxy evidence and external paths, then applies it with one confirmation. The manual detection action uses the same flow; there are no file-by-file approvals.
 
 `--home` selects a catalog home. `--yes` accepts the final operation confirmation; overlap and externally edited package files still require their specific override flags.
