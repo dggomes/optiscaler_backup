@@ -1,0 +1,72 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate stable version tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v(\d+\.\d+\.\d+)$') { throw 'Use a stable vMAJOR.MINOR.PATCH tag' }
+          "RELEASE_VERSION=$($Matches[1])" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Build and test
+        run: npm run agent:pre-commit
+      - name: Publish
+        shell: pwsh
+        run: dotnet publish src/cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$env:RELEASE_VERSION -o artifacts/win-x64
+      - name: Download previous schema release for compatibility test
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: PATH="/usr/bin:$PATH" gh release download v0.1.1 --repo "$GITHUB_REPOSITORY" --pattern 'optibackup-win-x64.exe*' --dir artifacts/previous
+      - name: Test executable updater
+        shell: pwsh
+        run: ./scripts/test-updater.ps1 -Executable artifacts/win-x64/optibackup.exe -PreviousExecutable artifacts/previous/optibackup-win-x64.exe
+      - name: Publish and verify desktop
+        shell: pwsh
+        run: |
+          dotnet build src/desktop/optiscaler-backup-desktop.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet format src/desktop/optiscaler-backup-desktop.csproj --verify-no-changes --no-restore
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$env:RELEASE_VERSION -o artifacts/desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./scripts/test-desktop.ps1 -Executable artifacts/desktop/optibackup-ui.exe -Cli artifacts/win-x64/optibackup.exe
+      - name: Download previous paired release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: PATH="/usr/bin:$PATH" gh release download v0.3.0 --repo "$GITHUB_REPOSITORY" --pattern '*.exe*' --dir artifacts/previous-pair
+      - name: Desktop and paired updater integration tests
+        shell: pwsh
+        run: ./scripts/test-desktop-updater.ps1 -Cli artifacts/win-x64/optibackup.exe -Desktop artifacts/desktop/optibackup-ui.exe -PreviousCli artifacts/previous-pair/optibackup-win-x64.exe -PreviousDesktop artifacts/previous-pair/optibackup-ui-win-x64.exe
+      - name: Prepare release assets
+        shell: pwsh
+        run: |
+          Copy-Item artifacts/win-x64/optibackup.exe artifacts/optibackup-win-x64.exe
+          Copy-Item artifacts/desktop/optibackup-ui.exe artifacts/optibackup-ui-win-x64.exe
+          foreach ($asset in @('optibackup-win-x64.exe', 'optibackup-ui-win-x64.exe')) {
+            $hash = (Get-FileHash (Join-Path artifacts $asset) -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $asset" | Set-Content (Join-Path artifacts ($asset + '.sha256')) -Encoding ascii
+          }
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          export PATH="/usr/bin:$PATH"
+          if PATH="/usr/bin:$PATH" gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            PATH="/usr/bin:$PATH" gh release upload "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 --clobber
+            PATH="/usr/bin:$PATH" gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
+          else
+            PATH="/usr/bin:$PATH" gh release create "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 --verify-tag --generate-notes
+          fi
