@@ -30,7 +30,7 @@
 - Fix cross-thread WPF control access when establishing Original after an earlier backup.
 - Read approved package conflict/override options on the UI thread before background installation or rollback.
 
-Coverage includes portrait caches, paired updates, inventory-assisted backups and workspace layout, including a 54-file fixture, managed-file filtering and a minimum 340 px table-pane check. Validation of the latest changes is pending. Real gaming-PC acceptance testing remains pending.
+Validation passed on Windows and Linux: 57 service tests on Windows (55 plus two Windows-only skips on Linux/macOS), CLI/menu end-to-end checks, five native CLI updater cases and nine desktop/paired updater cases. Native WPF coverage includes Original creation after an earlier backup during a background scan, a 54-file fixture, filtering and a minimum 340 px table pane. Real gaming-PC acceptance testing remains pending.
 
 ## [0.3.0] — 2026-10-30
 
