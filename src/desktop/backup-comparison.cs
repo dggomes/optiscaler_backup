@@ -58,6 +58,13 @@ internal sealed class BackupComparisonDialog : ReviewDialog
         };
         filter.SelectionChanged += (_, _) => ShowRows(); search.TextChanged += (_, _) => ShowRows();
     }
+    internal void SelectVersions(string beforeId, string afterId)
+    {
+        comparing = true;
+        before.SelectedItem = before.Items.Cast<BackupChoice>().Single(choice => choice.Id == beforeId);
+        after.SelectedItem = after.Items.Cast<BackupChoice>().Single(choice => choice.Id == afterId);
+        comparing = false;
+    }
     internal async Task Prepare()
     {
         if (comparing || before.SelectedItem is not BackupChoice first || after.SelectedItem is not BackupChoice second) return;

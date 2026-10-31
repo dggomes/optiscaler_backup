@@ -378,6 +378,7 @@ public partial class MainWindow : Window
         if (selectedId != selected) throw new InvalidOperationException("Library search discarded the current game.");
         SearchBox.Clear();
         var backupComparison = new BackupComparisonDialog(this, store, Format.Clone(Selected), (SnapshotList.SelectedItem as SnapshotRow)?.Id);
+        backupComparison.SelectVersions(Selected.Snapshots.First(snapshot => snapshot.Name == "Graphics baseline").Id, Selected.Snapshots.Single(snapshot => snapshot.Original).Id);
         await backupComparison.Prepare(); await RenderDialog(backupComparison, screenshot + ".compare.png");
         var comparisonLibrary = new PlayniteLibrary { ExportedUtc = DateTimeOffset.UtcNow, Games = store.VisibleGames.Take(2).Select(g => new PlayniteGame { Id = Guid.NewGuid().ToString(), Name = g.Name, InstallDirectory = g.Directory, Installed = true, Platforms = ["PC"], Tags = ["Windows UI test"] }).ToList() };
         await RenderDialog(new PlayniteDialog(this, comparisonLibrary, store, Format.Clone(store.Data.Settings)), screenshot + ".playnite.png");
@@ -437,6 +438,8 @@ public partial class MainWindow : Window
         dialog.UpdateLayout();
         if (dialog is ReviewDialog review) review.CheckInteraction();
         if (dialog is NameDialog name) name.ValidateLayout();
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        dialog.UpdateLayout();
         SaveImage((FrameworkElement)dialog.Content, file);
         dialog.Close();
     }
