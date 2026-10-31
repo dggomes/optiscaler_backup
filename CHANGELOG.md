@@ -16,6 +16,10 @@
 - Retry old cached thumbnail misses with the updated lookup and retry new misses daily. Isolate per-game artwork failures so one failed request does not stop the remaining catalog.
 - Remove executable-icon and implicit local Steam-cache artwork fallbacks. Library cards use cached API artwork or explicitly imported Playnite covers, with initials when no cover is available.
 
+### Fixed
+
+- Retry Windows executable replacement briefly during update installation and rollback when transient locks linger after health checks. Retries are bounded to two seconds; persistent access errors still fail with path guards, recovery journals and existing permissions preserved.
+
 Backup comparison uses recorded file states and inventories without reading live game files. Coverage labels describe what was captured, not payload-integrity verification. Missing legacy/external metadata and excluded-link paths remain unknown rather than being reported as deletions.
 
 Backup-comparison unit and native UI validation are in progress. Automated service, CLI, native desktop, compiled bridge export and updater checks gate publication. Live Playnite-host and real gaming-PC acceptance remain pending.
