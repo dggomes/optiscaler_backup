@@ -24,13 +24,14 @@ internal abstract class ReviewDialog : Window
         var root = new Grid();
         foreach (var height in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto }) root.RowDefinitions.Add(new() { Height = height });
         var header = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
-        header.Children.Add(new TextBlock { Text = title, FontSize = 22, FontFamily = new FontFamily("Bahnschrift") });
+        header.Children.Add(new TextBlock { Text = title, FontSize = 22, FontFamily = (FontFamily)owner.FindResource("DisplayFont"), FontWeight = FontWeights.SemiBold });
         header.Children.Add(new TextBlock { Text = description, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)owner.FindResource("Muted"), Margin = new Thickness(0, 6, 0, 0) });
         root.Children.Add(header); Grid.SetRow(Body, 1); root.Children.Add(Body);
         Grid.SetRow(Error, 2); root.Children.Add(Error);
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
-        var accept = ApproveButton = new Button { Content = approve, Style = (Style)owner.FindResource("Primary") };
+        var readOnly = approve == "Close";
+        var cancel = new Button { Content = readOnly ? "Close" : "Cancel", IsCancel = true };
+        var accept = ApproveButton = new Button { Content = approve, Visibility = readOnly ? Visibility.Collapsed : Visibility.Visible, Style = (Style)owner.FindResource("Primary") };
         accept.Click += (_, _) =>
         {
             try { Approve(); DialogResult = true; }

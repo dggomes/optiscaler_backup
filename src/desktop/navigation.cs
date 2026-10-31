@@ -43,6 +43,24 @@ public partial class MainWindow
         else if (e.Key == Key.Escape && page != Page.Library) { Library_Click(sender, e); e.Handled = true; }
         else if (e.Key == Key.F5) { Scan_Click(sender, e); e.Handled = true; }
     }
+    private void LibraryOptions_Click(object sender, RoutedEventArgs e)
+    {
+        if (busy) return;
+        var menu = new ContextMenu { PlacementTarget = (Button)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        var scan = new MenuItem { Header = "Scan a folder…" }; scan.Click += ScanOptions_Click;
+        var settings = new MenuItem { Header = "Library settings / excluded games" }; settings.Click += Settings_Click;
+        menu.Items.Add(scan); menu.Items.Add(settings); menu.IsOpen = true;
+    }
+    private void GameOptions_Click(object sender, RoutedEventArgs e)
+    {
+        if (busy || selectedId == null) return;
+        var menu = new ContextMenu { PlacementTarget = (Button)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        var folder = new MenuItem { Header = "Open game folder", IsEnabled = Directory.Exists(Selected.Directory) };
+        folder.Click += async (_, _) => await Guard("Open game folder", () =>
+        { Process.Start(new ProcessStartInfo(Selected.Directory) { UseShellExecute = true }); return Task.CompletedTask; });
+        var remove = new MenuItem { Header = "Remove and exclude…", Tag = selectedId }; remove.Click += ExcludeGame_Click;
+        menu.Items.Add(folder); menu.Items.Add(new Separator()); menu.Items.Add(remove); menu.IsOpen = true;
+    }
     private async void ScanOptions_Click(object sender, RoutedEventArgs e)
     {
         var folder = new OpenFolderDialog { Title = "Scan a game-library folder" };

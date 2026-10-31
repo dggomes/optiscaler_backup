@@ -63,9 +63,18 @@ internal sealed class PlayniteDialog : ReviewDialog
         Error.Text = string.Join(" ", (library.Warnings ?? []).Take(3).Select(warning => warning.Length > 300 ? warning[..300] : warning));
         Body.RowDefinitions.Add(new() { Height = GridLength.Auto }); Body.RowDefinitions.Add(new() { Height = GridLength.Auto }); Body.RowDefinitions.Add(new());
         var header = new StackPanel();
-        void Field(string label, TextBox input, List<string> values)
-        { header.Children.Add(new TextBlock { Text = label + " (names separated by ;)", Margin = new Thickness(0, 4, 0, 3) }); input.Text = string.Join("; ", values); header.Children.Add(input); }
-        Field("Exclude platforms", platforms, filters.PlayniteExcludePlatforms); Field("Exclude tags", tags, filters.PlayniteExcludeTags); Field("Exclude categories", categories, filters.PlayniteExcludeCategories);
+        var fields = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+        for (var i = 0; i < 3; i++) fields.ColumnDefinitions.Add(new());
+        void Field(string label, TextBox input, List<string> values, int column)
+        {
+            var field = new StackPanel { Margin = new Thickness(0, 0, column == 2 ? 0 : 12, 0) };
+            field.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 5) }); input.Text = string.Join("; ", values);
+            input.ToolTip = "Exact names separated by ;. Changing a filter clears the selection.";
+            System.Windows.Automation.AutomationProperties.SetName(input, label);
+            field.Children.Add(input); Grid.SetColumn(field, column); fields.Children.Add(field);
+        }
+        Field("Exclude platforms", platforms, filters.PlayniteExcludePlatforms, 0); Field("Exclude tags", tags, filters.PlayniteExcludeTags, 1); Field("Exclude categories", categories, filters.PlayniteExcludeCategories, 2);
+        header.Children.Add(fields);
         var actions = new WrapPanel(); var all = new Button { Content = "Select all eligible" }; var clear = new Button { Content = "Clear selection" };
         all.Click += (_, _) => { foreach (var row in rows) row.Include = row.Row.Eligible; table.Items.Refresh(); };
         clear.Click += (_, _) => { foreach (var row in rows) row.Include = false; table.Items.Refresh(); };

@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Consolidate the library into one header with compact tools for less frequent actions, keeping scanning, adding games and Playnite import easy to find.
+- Preserve 112 × 168 portrait covers while adding backup/Original/offline badges, two-line game titles and fuller tooltips.
+- Group game-folder access and reversible exclusion under Game options; label backup component/settings details as Inspect.
+- Refine the dark theme, typography, dropdowns, keyboard focus and hover states, and balance the Settings panels.
+- Give backup comparison more room for file paths by hiding hash columns until Show hashes is selected; explain empty filtered results.
+- Use a single Close action in read-only dialogs and arrange Playnite's platform/tag/category filters side by side.
+
+Native screenshot review of these UX changes is in progress.
+
 ## [0.3.5] — 2026-10-31
 
 ### Added
@@ -22,7 +35,7 @@
 
 Backup comparison uses recorded file states and inventories without reading live game files. Coverage labels describe what was captured, not payload-integrity verification. Missing legacy/external metadata and excluded-link paths remain unknown rather than being reported as deletions.
 
-Backup-comparison unit and native UI validation are in progress. Automated service, CLI, native desktop, compiled bridge export and updater checks gate publication. Live Playnite-host and real gaming-PC acceptance remain pending.
+Automated service, CLI, native desktop, compiled bridge export and updater checks passed for 0.3.5 in [Windows/Linux CI](https://github.com/dggomes/optiscaler_backup/actions/runs/41201654651). Live Playnite-host and real gaming-PC acceptance remain pending.
 
 ## [0.3.4] — 2026-10-31
 
