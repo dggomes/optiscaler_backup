@@ -30,7 +30,16 @@ function Invoke-Desktop([string]$DataHome, [string]$ImagePath) {
 }
 
 try {
-    'quality=high' | Set-Content (Join-Path $testGame 'OptiScaler.ini')
+    @'
+[Upscalers]
+Dx11Upscaler=auto
+Dx12Upscaler=fsr31
+VulkanUpscaler=xess
+[FrameGen]
+Enabled=true
+FGInput=dlssg
+FGOutput=xefg
+'@ | Set-Content (Join-Path $testGame 'OptiScaler.ini')
     'dxgi test fixture' | Set-Content (Join-Path $testGame 'dxgi.dll')
     $game = (Invoke-Cli -CommandArgs @('games','add','Desktop integration fixture',$testGame)) | ConvertFrom-Json
     # Optional real image fixture; provider outages must not block local UI tests.
@@ -77,6 +86,8 @@ sg.ResolutionQuality=100
 [SystemSettings]
 r.FidelityFX.FSR3.Enabled=1
 r.FidelityFX.FSR3.QualityMode=0
+r.NGX.DLSS.Enable=1
+r.Streamline.DLSSG.Enable=1
 '@ | Set-Content (Join-Path $testGame 'Engine.ini')
     foreach ($file in @('GameUserSettings.ini','Engine.ini')) { $null = Invoke-Cli -CommandArgs @('files','add',$game.Id,$file) }
     $null = Invoke-Cli -CommandArgs @('snapshots','create',$game.Id,'Graphics baseline')
@@ -100,7 +111,7 @@ r.FidelityFX.FSR3.QualityMode=0
     Invoke-Desktop -DataHome $testData -ImagePath $image
     $freshImage = Join-Path $images "fresh.png"
     Invoke-Desktop -DataHome (Join-Path $testRoot "empty-data") -ImagePath $freshImage
-    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.files-compact.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.update.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.insights.png'),($image+'.insights.png.settings.png'),($image+'.changes.png'),($image+'.package.png'))) {
+    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.files-compact.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.update.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.insights.png'),($image+'.insights.png.settings.png'),($image+'.insights.png.optiscaler.png'),($image+'.changes.png'),($image+'.package.png'))) {
         if (-not (Test-Path $path) -or (Get-Item $path).Length -lt 1000) { throw "Desktop render missing/empty: $path" }
     }
     Write-Host 'PASS desktop stale/read-only lock startup and close cleanup, pagination, global search, navigation, selection retention, 58-file compact workspace/filter and real FSR/OptiPatcher/settings recognition, offline actions, cached thumbnail display/preferences, update controls/busy guard, recovery filtering and dialog rendering'

@@ -92,6 +92,37 @@ internal static class BackupInsightTests
         var empty = GameSettingsReader.Snapshot(f.Store, new Snapshot());
         Check(empty.Observations.Count == 0, "Missing settings were invented from live files.");
     }
+    public static void UpscalingAndFrameGeneration()
+    {
+        var game = GameSettingsReader.Parse("[SystemSettings]\nr.NGX.DLSS.Enable=1\nr.Streamline.DLSSG.Enable=0\nr.FidelityFX.FI.Enabled=1\nr.XeSS.Enabled=false\nr.XeFG.Enabled=true\nr.FidelityFX.FSR3.Enabled=0", "Engine.ini");
+        Check(game.Observations.Any(o => o.Setting == "Game upscaling: DLSS" && o.Value == "On"), "DLSS selection was missed.");
+        Check(game.Observations.Any(o => o.Setting == "Game frame generation: DLSS" && o.Value == "Off"), "DLSS FG disabled value was lost.");
+        Check(game.Observations.Any(o => o.Setting == "Game frame generation: FSR" && o.Value == "On"), "FSR FG preference was missed.");
+        Check(game.Observations.Any(o => o.Setting == "Game frame generation: XeSS" && o.Value == "On"), "XeSS FG preference was missed.");
+        Check(game.Observations.All(o => o.Scope == "Game"), "Game and middleware scopes were confused.");
+        var custom = GameSettingsReader.Parse("[/Script/Test.GameUserSettings]\nFrameGenerationMode=2\nUpscalingType=3\n[Account]\nFrameGen=secret", "GameUserSettings.ini");
+        Check(custom.Observations.Count == 2 && custom.Observations.All(o => o.Confidence.Contains("mapping required")), "Custom game numeric settings were guessed or unrelated fields exposed.");
+        var text = "[Upscalers]\nDx11Upscaler=auto\nDx12Upscaler=dlss\nVulkanUpscaler=fsr31\n[FrameGen]\nEnabled=true\nFGInput=dlssg\nFGOutput=xefg\nFGNvngxReplacement=Arturs\n[Account]\nToken=secret";
+        var opti = GameSettingsReader.Parse(text, "game:mods/OPTISCALER.INI");
+        Check(opti.Observations.Count == 7 && opti.Observations.All(o => o.Scope == "OptiScaler" && o.Layer == "OptiScaler configuration"), "OptiScaler configuration scope/coverage is wrong.");
+        Check(opti.Observations.Any(o => o.Setting == "OptiScaler upscaling: DX12" && o.Value == "DLSS"), "API-specific backend was missed.");
+        Check(opti.Observations.Any(o => o.Value == "Automatic / unspecified"), "Automatic backend was guessed.");
+        Check(opti.Observations.Any(o => o.Setting == "OptiScaler FG output" && o.Value == "XeSS frame generation"), "OptiScaler output was confused with game FG.");
+        Check(GameSettingsReader.Parse(text, "Engine.ini").Observations.Count == 0, "OptiScaler keys were interpreted outside OptiScaler.ini.");
+        var legacy = GameSettingsReader.Parse("[FrameGen]\nFGType=nukems\n[OptiFG]\nEnabled=false", "OptiScaler.ini");
+        Check(legacy.Observations.Any(o => o.Value.Contains("Nukem")) && legacy.Observations.Any(o => o.Value == "Off"), "Legacy OptiScaler fields were missed.");
+        var unknown = GameSettingsReader.Parse("[Upscalers]\nDx12Upscaler=FutureCustom\n[FrameGen]\nFGOutput=alien\nEnabled=maybe", "OptiScaler.ini");
+        Check(unknown.Observations.All(o => o.Value.Contains("unmapped", StringComparison.OrdinalIgnoreCase)), "Unknown OptiScaler values were silently mapped.");
+        using var f = new Fixture();
+        f.Write("OptiScaler.ini", text); f.Game.Managed.Add(new("game", "OptiScaler.ini")); f.Store.Put(f.Game);
+        var snapshot = f.Engine.CreateSnapshot(f.Current, "Middleware", false, false);
+        f.Write("OptiScaler.ini", "[Upscalers]\nDx12Upscaler=xess\n[FrameGen]\nFGOutput=fsrfg");
+        Check(GameSettingsReader.Snapshot(f.Store, snapshot).Observations.Any(o => o.Value == "XeSS frame generation"), "Snapshot middleware settings came from edited live files.");
+        Check(GameSettingsReader.Current(f.Current).Observations.Any(o => o.Value == "FSR frame generation"), "Current middleware settings did not reflect edits.");
+        var state = snapshot.Files.Single(); File.SetAttributes(f.Store.Payload(state), FileAttributes.Normal); File.AppendAllText(f.Store.Payload(state), "corrupt");
+        var corrupt = GameSettingsReader.Snapshot(f.Store, snapshot);
+        Check(corrupt.Observations.Count == 0 && corrupt.Warnings.Count > 0, "Corrupt middleware settings were reported as trusted backup contents.");
+    }
     private static void Check(bool value, string message) { if (!value) throw new Exception(message); }
     private static async Task RejectAsync(Func<Task<ComponentFingerprints>> action)
     {

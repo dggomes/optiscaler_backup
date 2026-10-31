@@ -350,7 +350,15 @@ public partial class MainWindow : Window
             if (!graphics.Observations.Any(o => o.Setting == "FSR quality preference" && o.Value == "Native AA") || !graphics.Observations.Any(o => o.Value == "2560 px"))
                 throw new InvalidOperationException("Captured Unreal graphics preferences were not extracted.");
             await RenderDialog(new BackupInsightsDialog(this, insightSnapshot.Name, components, graphics), screenshot + ".insights.png");
-            await RenderDialog(new BackupInsightsDialog(this, "Captured graphics settings", null, graphics), screenshot + ".insights.png.settings.png");
+            if (!graphics.Observations.Any(o => o.Setting == "Game frame generation: DLSS" && o.Value == "On")
+                || !graphics.Observations.Any(o => o.Setting == "OptiScaler FG output" && o.Value == "XeSS frame generation"))
+                throw new InvalidOperationException("Captured game and OptiScaler frame-generation preferences were not separated.");
+            var gameSettingsDialog = new BackupInsightsDialog(this, "Captured graphics settings", null, graphics);
+            gameSettingsDialog.SelectSettingsScope("Game");
+            await RenderDialog(gameSettingsDialog, screenshot + ".insights.png.settings.png");
+            var optiSettingsDialog = new BackupInsightsDialog(this, "Captured OptiScaler settings", null, graphics);
+            optiSettingsDialog.SelectSettingsScope("OptiScaler");
+            await RenderDialog(optiSettingsDialog, screenshot + ".insights.png.optiscaler.png");
         }
 
         if (game.Snapshots.FirstOrDefault() is { } snapshot)
