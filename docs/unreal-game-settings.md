@@ -2,13 +2,13 @@
 
 Available from **v0.3.3**. It reports saved graphics preferences from approved/captured Unreal-style INIs; it does not edit settings, inspect a running game, choose an effective configuration layer or prove which upscaler is active. File parsing is local. Backup schema 2 remains unchanged.
 
-The game upscaling/frame-generation and `OptiScaler.ini` extension below is **unreleased**. Its additional fields, `Scope` classification and separate OptiScaler tab are not included in v0.3.3.
+The game upscaling/frame-generation and `OptiScaler.ini` extension below is available from **v0.3.4**. Its additional fields, `Scope` classification and separate OptiScaler tab build on the original v0.3.3 Unreal report.
 
 ## Approved current files and historical coverage
 
 Supported filenames are `GameUserSettings.ini`, `Engine.ini`, `Scalability.ini`, `DefaultGameUserSettings.ini`, `DefaultEngine.ini` and `DefaultScalability.ini`, case-insensitively.
 
-The unreleased extension also accepts `OptiScaler.ini` through the same current-file approval and captured-payload verification rules. OptiScaler-specific keys are interpreted only in that filename, not inferred from similarly named sections in a game's INI.
+From v0.3.4, the extension also accepts `OptiScaler.ini` through the same current-file approval and captured-payload verification rules. OptiScaler-specific keys are interpreted only in that filename, not inferred from similarly named sections in a game's INI.
 
 - **Current game:** read only matching targets already approved through managed-file selection, including explicitly approved external settings. No unrelated AppData/Documents tree is read automatically by this report.
 - **Saved snapshot:** read only matching files whose bytes were actually captured, verifying their stored hash/size first. Missing, corrupt, absent or uncaptured settings produce no invented values. There is no fallback to current game files or live external settings for an old snapshot.
@@ -57,9 +57,9 @@ These mappings come from AMD's [FSR Unreal plugin guide](https://gpuopen.com/lea
 
 Game-specific upscaler/quality/AA keys and plugin-specific quality modes retain their raw values. A custom DLSS number is not translated into Quality/Performance/DLAA without a primary-source rule for that game's/plugin's enum. Unknown numeric values are not aliases for a known mode. These reports do not combine filename presence and INI preferences into a claim of runtime activation.
 
-## Game upscaling and frame-generation extension — unreleased
+## Game upscaling and frame-generation extension
 
-The current source recognizes the following saved plugin keys in supported game CVar sections. These are separate preferences, not a resolved active upscaler/frame-generator pair:
+From v0.3.4, the reader recognizes the following saved plugin keys in supported game CVar sections. These are separate preferences, not a resolved active upscaler/frame-generator pair:
 
 | Saved key | Reported preference / mapper reference |
 | --- | --- |
@@ -87,7 +87,7 @@ Mappings cite the official [v0.9.4 configuration](https://github.com/optiscaler/
 
 Frame-generation selectors distinguish no-FG, Streamline/NVNGX inputs, upscaler-driven input, FSR/OptiFG, XeSS and Nukem paths. Replacement values distinguish none, Nukem, DLSS Enabler, FidelityFX and combined paths. Missing fields create no inferred defaults. `auto` remains **Automatic / unspecified**; unknown selectors remain custom/unmapped, with raw values preserved. Saved enable/selector fields may disagree or depend on defaults, hardware and API; the report does not guess an effective runtime configuration.
 
-Desktop source splits **Graphics settings** (Game scope) from **OptiScaler settings**. Both show interpreted/raw values, file/line/layer, section/key and confidence/source links. Existing `settings <game-id> [snapshot-id]` CLI output adds `Scope` per observation in this unreleased extension; it does not modify files or change backup schema 2.
+From v0.3.4, the desktop splits **Graphics settings** (Game scope) from **OptiScaler settings**. Both show interpreted/raw values, file/line/layer, section/key and confidence/source links. Existing `settings <game-id> [snapshot-id]` CLI output adds `Scope` per observation from v0.3.4; it does not modify files or change backup schema 2.
 
 ## CLI and desktop
 

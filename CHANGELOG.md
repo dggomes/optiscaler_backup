@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.4] — 2026-10-31
 
 ### Added
 
@@ -9,7 +9,9 @@
 - Recognize documented game DLSS, FSR and XeSS upscaling/frame-generation enable preferences, including DLAA and raw plugin-version-specific quality values.
 - Show OptiScaler's API-specific DX11/DX12/Vulkan upscaler choices, frame-generation enable/input/output and NVNGX replacement preferences, plus legacy `FGType` and OptiFG enable keys.
 
-Automatic/default choices remain unspecified; custom, unknown and game-specific numeric modes remain raw or unmapped rather than guessed. Saved game preferences and OptiScaler middleware choices are reported separately and do not establish runtime activation or the selected FSR version. These changes are not released.
+Automatic/default choices remain unspecified; custom, unknown and game-specific numeric modes remain raw or unmapped rather than guessed. Saved game preferences and OptiScaler middleware choices are reported separately and do not establish runtime activation or the selected FSR version.
+
+Validation passed in [Windows/Linux CI](https://github.com/dggomes/optiscaler_backup/actions/runs/41195734792): 68 Windows service tests, 66 service tests with two Windows-only skips on Linux/macOS, CLI end-to-end and archive-policy checks. Native game/OptiScaler settings tabs rendered successfully, and updater checks passed. Real gaming-PC acceptance testing remains pending.
 
 ## [0.3.3] — 2026-10-31
 

@@ -141,7 +141,7 @@ internal sealed class BackupInsightsDialog : ReviewDialog
         var observations = settings.Observations.Where(o => o.Scope == scope).ToList();
         var settingsTable = Table(); settingsTable.ItemsSource = observations.Select(o => new
         {
-            o.Setting,
+            Setting = o.Setting.StartsWith(scope + " ", StringComparison.Ordinal) ? o.Setting[(scope.Length + 1)..] : o.Setting,
             SavedValue = o.Value == o.RawValue ? o.Value : o.Value + " [raw: " + o.RawValue + "]",
             Location = o.File + ":" + o.Line + " · " + o.Layer,
             Key = "[" + o.Section + "] " + o.Key,
@@ -150,7 +150,7 @@ internal sealed class BackupInsightsDialog : ReviewDialog
         settingsTable.Columns.Add(Column("Setting", "Setting", 165)); settingsTable.Columns.Add(Column("Saved value", "SavedValue", 190));
         settingsTable.Columns.Add(Column("File / line / layer", "Location", 200)); settingsTable.Columns.Add(Column("Section + key", "Key", 160)); settingsTable.Columns.Add(Column("Interpretation / source", "Interpretation", -1));
         var settingsPanel = new Grid(); settingsPanel.RowDefinitions.Add(new() { Height = GridLength.Auto }); settingsPanel.RowDefinitions.Add(new());
-        settingsPanel.Children.Add(new TextBlock { Text = (observations.Count == 0 ? "No captured/approved " + title.ToLowerInvariant() + " were found." : new GameSettingsReport(observations, []).Summary + ".") + " Saved preferences; runtime selection is not measured. " + string.Join(" ", settings.Warnings), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+        settingsPanel.Children.Add(new TextBlock { Text = (observations.Count == 0 ? "No captured/approved " + title.ToLowerInvariant() + " were found." : new GameSettingsReport(observations, []).Summary.Replace(scope + " ", "", StringComparison.Ordinal) + ".") + " Saved preferences; runtime selection is not measured. " + string.Join(" ", settings.Warnings), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
         Grid.SetRow(settingsTable, 1); settingsPanel.Children.Add(settingsTable);
         return new TabItem { Header = $"{title} ({observations.Count})", Content = settingsPanel };
     }
