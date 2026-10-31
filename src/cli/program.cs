@@ -81,6 +81,8 @@ internal sealed class Arguments
 
 internal sealed partial class Application(Store store, Engine engine)
 {
+    private ComponentFingerprints? fingerprints;
+    private ComponentFingerprints Fingerprints => fingerprints ??= ComponentFingerprints.Load(store.Home);
     private readonly Discovery discovery = new(message => Console.Error.WriteLine("Warning: " + message));
     private bool exitForUpdate;
     public const string Help = """
@@ -95,6 +97,9 @@ internal sealed partial class Application(Store store, Engine engine)
           optibackup files add <game-id> <relative-path>
           optibackup files add <game-id> <absolute-file> --external
           optibackup files remove <game-id> <root-id:relative-path>
+          optibackup components catalog|refresh
+          optibackup components identify <game-id> <snapshot-id>
+          optibackup settings <game-id> [snapshot-id]
           optibackup snapshots list <game-id>
           optibackup snapshots create <game-id> <name> [--original --confirm-clean] [--dry-run]
           optibackup snapshots rename <game-id> <snapshot-id> <name>
@@ -125,6 +130,11 @@ internal sealed partial class Application(Store store, Engine engine)
             case "games": Games(args); break;
             case "files": Files(args); break;
             case "snapshots": Snapshots(args); break;
+            case "components": await Components(args); break;
+            case "settings":
+                args.Count(2, 3);
+                var settingsGame = store.Game(args.At(1));
+                Output(args.Positionals.Count == 3 ? GameSettingsReader.Snapshot(store, FindSnapshot(settingsGame, args.At(2))) : GameSettingsReader.Current(settingsGame), args); break;
             case "restore": Restore(args); break;
             case "packages": PackageCommands(args); break;
             case "config": Config(args); break;
@@ -246,6 +256,27 @@ internal sealed partial class Application(Store store, Engine engine)
         }
     }
 
+    private async Task Components(Arguments args)
+    {
+        var catalog = Fingerprints;
+        switch (args.At(1))
+        {
+            case "catalog": args.Count(2, 2); Output(new { catalog.Sha256, Count = catalog.Document.Records.Count, catalog.Document.Sources }, args); break;
+            case "identify":
+                args.Count(4, 4); var game = store.Game(args.At(2));
+                Output(catalog.Identify(store, FindSnapshot(game, args.At(3))), args); break;
+            case "refresh":
+                args.Count(2, 2);
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(40) })
+                {
+                    catalog = await catalog.Refresh(client, store.Home); fingerprints = catalog;
+                    Output(new { catalog.Sha256, Count = catalog.Document.Records.Count }, args);
+                }
+                break;
+            default: throw new ArgumentException("Use components catalog, refresh or identify.");
+        }
+    }
+
     private object SnapshotOutput(Snapshot snapshot) => new
     {
         snapshot.Id,
@@ -255,7 +286,8 @@ internal sealed partial class Application(Store store, Engine engine)
         snapshot.Recovery,
         snapshot.Folder,
         FolderPath = store.SnapshotPath(snapshot),
-        snapshot.Files
+        snapshot.Files,
+        Components = Fingerprints.Identify(store, snapshot)
     };
 
     private static Snapshot FindSnapshot(Game game, string id) => game.Snapshots.SingleOrDefault(s => s.Id == id) ?? throw new InvalidOperationException("Snapshot ID not found.");

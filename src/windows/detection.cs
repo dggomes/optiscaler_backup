@@ -20,7 +20,7 @@ public static class Detection
     private static readonly HashSet<string> Proxies = new(StringComparer.OrdinalIgnoreCase)
         { "dxgi.dll", "d3d11.dll", "d3d12.dll", "winmm.dll", "version.dll", "dbghelp.dll", "wininet.dll", "winhttp.dll", "dinput8.dll" };
     private static readonly HashSet<string> Configs = new(StringComparer.OrdinalIgnoreCase)
-        { "GameUserSettings.ini", "Engine.ini", "user.cfg", "graphics.xml", "settings.json", "settings.ini", "config.ini" };
+        { "GameUserSettings.ini", "Engine.ini", "Scalability.ini", "DefaultGameUserSettings.ini", "DefaultEngine.ini", "DefaultScalability.ini", "user.cfg", "graphics.xml", "settings.json", "settings.ini", "config.ini" };
 
     public static List<string> Executables(string root, Action<string>? warning = null) => SafePaths.Walk(root, warning)
         .Where(p => Path.GetExtension(p).Equals(".exe", StringComparison.OrdinalIgnoreCase))
@@ -65,7 +65,7 @@ public static class Detection
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        var names = game.Executables.Select(p => Path.GetFileNameWithoutExtension(p).Replace("-Win64-Shipping", "", StringComparison.OrdinalIgnoreCase))
+        var names = game.Executables.Select(p => Path.GetFileNameWithoutExtension(p).Replace("-Win64-Shipping", "", StringComparison.OrdinalIgnoreCase).Replace("-WinGDK-Shipping", "", StringComparison.OrdinalIgnoreCase))
             .Append(game.Name).Distinct(StringComparer.OrdinalIgnoreCase);
         var roots = names.SelectMany(n => new[] { Path.Combine(local, n, "Saved", "Config"), Path.Combine(roaming, n), Path.Combine(docs, "My Games", n), Path.Combine(docs, n) });
         return roots.Where(Directory.Exists).SelectMany(r => SafePaths.Walk(r, warning, 4)).Where(p => Configs.Contains(Path.GetFileName(p))).Distinct(StringComparer.OrdinalIgnoreCase).ToList();

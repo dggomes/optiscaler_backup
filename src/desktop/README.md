@@ -62,6 +62,14 @@ Game pages hide the global app masthead in favor of a compact title, library bre
 
 Inventory capture and file mutations run off the UI thread, with mutations serialized. Active file work temporarily disables competing actions and prevents closing the window; background library scans remain separate and defer their merge when needed. Dialog values are captured on the UI thread before worker tasks use them, avoiding cross-thread dialog access. Errors are shown inline and can be dismissed. Startup recovery runs before normal work.
 
+## Component recognition and saved settings — development
+
+The following source features are in development after stable v0.3.2. **Backups** automatically identifies recorded OptiScaler/OptiPatcher/FSR versions in a **Components / versions** column. **Components / settings…** shows all matching provenance records, unknown/custom builds and **Saved bytes** versus **Inventory only** coverage. Matches use captured hashes/lengths, including renamed files; they do not reverify stored payloads or establish runtime enablement. Restore performs its own integrity checks. See [component recognition](../../docs/component-recognition.md).
+
+The dialog's **Graphics settings** tab reads verified captured Unreal INIs and shows interpreted/raw values, file/line/layer, section/key and confidence/source URL, with full tooltips and conflict warnings. It never substitutes current game settings for uncaptured historical bytes. Resolution/last-confirmed values remain separate; 100% scale is not classified as DLAA. **Files → Current settings…** and CLI `settings <game-id>` read approved current INIs instead. See [Unreal interpretation rules](../../docs/unreal-game-settings.md).
+
+The bundled fingerprint metadata works offline. Settings has a separate **Historical component recognition** block below the application-updater controls. **Refresh recognition catalog** fetches only this project's append-only JSON. Background startup attempts follow the shared `CheckUpdates` opt-out and daily cooldown, even after network failures; manual refresh bypasses that wait. Metadata is cached separately under `<home>/components`; no binary components are downloaded/installed by this application feature. Its DLSSync-derived metadata has [Apache 2.0 attribution](../../docs/component-recognition.md#provenance-and-metadata-licensing). Backup schema 2 remains unchanged, and this is separate from manager compatibility/install work.
+
 ## Settings and storage
 
 **Settings → Change location…** confirms the source/destination, copies and verifies snapshots/blobs, then switches the configured location. Old copies are retained. Other controls open the backup folder, copy its path or open app data. **Open backups** from a game opens that game's snapshot collection when it exists; elsewhere it opens the configured payload folder.
@@ -87,6 +95,7 @@ First opening a schema 1 catalog converts existing snapshots to schema 2 folders
 - `game-artwork.cs`: cached-download/local Steam cover and executable-icon loading with initials supplied by the library.
 - `thumbnails.cs`: catalog-wide background download scheduling, progress, retry and opt-out; matching/cache integrity belongs to the Windows adapter service.
 - `updates.cs`: shared daily/manual release checks, opt-out, release-note/target confirmation and staged update/restart.
+- `backup-insights.cs`: background fingerprint summaries, recognition-catalog refresh and read-only component/settings detail dialogs.
 - `theme.xaml` / `window-chrome.cs`: shared dark controls and native window styling.
 - `dialogs.cs`: managed-file batch selection, labels/Original confirmation, ZIP mappings and change/conflict previews.
 

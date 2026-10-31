@@ -16,6 +16,10 @@ if (args.SequenceEqual(new[] { "--live-thumbnails" })) { await ThumbnailTests.Li
 
 var tests = new (string Name, Func<Task> Run)[]
 {
+    ("Historical fingerprints identify exact renamed binaries and inventory-only versions", () => Sync(BackupInsightTests.HistoricalRecognition)),
+    ("Recognition refresh preserves history and rejects malformed/future catalogs", BackupInsightTests.CatalogRefresh),
+    ("Unreal settings preserve native AA, custom enums, conflicts and source provenance", () => Sync(BackupInsightTests.UnrealParsing)),
+    ("Backup settings use verified captured UTF16/INI bytes rather than current game files", () => Sync(BackupInsightTests.CapturedSettings)),
     ("Session startup resets stale/read-only markers and releases failed startups", () => Sync(SessionLockTests.StaleMarkers)),
     ("Session locks protect legacy owners and reject linked marker paths", () => Sync(SessionLockTests.LegacyAndLinks)),
     ("Session lock recovers after a crashed process without bypassing live owners", () => Sync(SessionLockTests.CrashRecovery)),

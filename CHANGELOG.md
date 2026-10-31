@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Cumulative component fingerprint catalog for automatic backup identification in CLI and desktop ([#15](https://github.com/dggomes/optiscaler_backup/issues/15)). The bundled offline catalog contains 98 real records from signed DLSSync data and official OptiScaler/OptiPatcher archives, including FSR builds `4.1.0.0`, `4.1.1.2740` and `4.1.2.4555`.
+- SHA-256 matching identifies renamed component files while retaining unknown/custom builds and multiple possible matches. Historical backups are identified without rewriting them; reports distinguish saved file bytes from inventory-only evidence.
+- Small data-only catalog refreshes retain older fingerprints so previously recognized component versions remain identifiable.
+- Read-only inspection of saved and current approved Unreal INI graphics preferences ([#16](https://github.com/dggomes/optiscaler_backup/issues/16)): resolution, window mode, render scales, VSync, HDR and documented FSR quality preferences, including Native AA, Quality and Performance.
+- Desktop component/settings details and a backup component-summary column, with CLI component identification and settings reports. Reports retain source references, file/layer, raw values, interpretation confidence and conflicting-value warnings.
+
+Saved preferences and component presence do not establish runtime enablement. A 100% render scale is not proof of Native AA or DLAA; game-specific numeric DLSS values remain unmapped. Inventory hashes do not reconstruct uncaptured settings bytes.
+
+These changes are not released. Windows validation and real gaming-PC acceptance testing remain pending.
+
 ## [0.3.2] — 2026-10-30
 
 ### Fixed

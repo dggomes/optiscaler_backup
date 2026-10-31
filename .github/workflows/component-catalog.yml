@@ -1,0 +1,82 @@
+name: Maintain component fingerprint history
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: component-fingerprint-maintenance
+  cancel-in-progress: false
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REVIEW_BRANCH: automation/component-fingerprint-history
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .context/component-history-cache
+          key: component-archives-${{ github.run_id }}
+          restore-keys: component-archives-
+      - name: Inspect published history without executing binaries
+        run: |
+          mkdir -p .context
+          if /usr/bin/git ls-remote --exit-code origin "refs/heads/$REVIEW_BRANCH" >/dev/null; then
+            /usr/bin/git fetch origin "$REVIEW_BRANCH"
+            /usr/bin/git show FETCH_HEAD:src/core/component-fingerprints.json > .context/pending-fingerprints.json
+            python3 scripts/update-component-catalog.py --history .context/pending-fingerprints.json
+          else
+            python3 scripts/update-component-catalog.py
+          fi
+          npm run agent:pre-commit
+      - name: Keep an append-only review branch
+        id: proposal
+        run: |
+          if [ -f .context/pending-fingerprints.json ]; then
+            if cmp -s .context/pending-fingerprints.json src/core/component-fingerprints.json; then exit 0; fi
+            parent=$(/usr/bin/git rev-parse FETCH_HEAD)
+          else
+            if /usr/bin/git diff --quiet -- src/core/component-fingerprints.json; then exit 0; fi
+            parent=$(/usr/bin/git rev-parse HEAD)
+          fi
+          /usr/bin/git config user.name github-actions[bot]
+          /usr/bin/git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          catalog_index_path="$RUNNER_TEMP/component-catalog-index"
+          GIT_INDEX_FILE="$catalog_index_path" /usr/bin/git read-tree "$parent"
+          blob=$(/usr/bin/git hash-object -w src/core/component-fingerprints.json)
+          GIT_INDEX_FILE="$catalog_index_path" /usr/bin/git update-index --cacheinfo 100644 "$blob" src/core/component-fingerprints.json
+          tree=$(GIT_INDEX_FILE="$catalog_index_path" /usr/bin/git write-tree)
+          commit=$(echo "Update component fingerprint history" | /usr/bin/git commit-tree "$tree" -p "$parent")
+          /usr/bin/git push origin "$commit:refs/heads/$REVIEW_BRANCH"
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+      - name: Request review without changing repository approval policy
+        if: steps.proposal.outputs.changed == 'true'
+        run: |
+          cat > .context/catalog-review.txt <<BODY
+          Historical component fingerprints have been appended at https://github.com/${GITHUB_REPOSITORY}/compare/main...${REVIEW_BRANCH}
+
+          Source archives were inspected without loading/executing binaries. The DLSSync source was pinned and Ed25519-verified. Review source/version/asset identities and rolling replacements before merging. Only recognition metadata changes; game files and executable recipes do not.
+
+          Maintainer-side service/CLI tests passed against the current app and proposed metadata. Bot-authored pushes do not trigger ordinary CI automatically; run Windows CI before merging if required.
+          BODY
+          existing=$(PATH="/usr/bin:$PATH" gh pr list --base main --head "$REVIEW_BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then exit 0; fi
+          if PATH="/usr/bin:$PATH" gh pr create --base main --head "$REVIEW_BRANCH" --title "Update component fingerprint history" --body-file .context/catalog-review.txt; then exit 0; fi
+          # Some repositories disable bot-created PRs. Preserve the review branch and open an issue instead.
+          existing_issue=$(PATH="/usr/bin:$PATH" gh issue list --state open --search 'in:title "Review component fingerprint history"' --json number --jq '.[0].number // empty')
+          if [ -n "$existing_issue" ]; then
+            PATH="/usr/bin:$PATH" gh issue edit "$existing_issue" --body-file .context/catalog-review.txt
+          else
+            PATH="/usr/bin:$PATH" gh issue create --title "Review component fingerprint history" --body-file .context/catalog-review.txt
+          fi

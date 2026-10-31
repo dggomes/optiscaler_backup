@@ -12,7 +12,7 @@ using OptiScalerBackup.Windows;
 namespace OptiScalerBackup.Desktop;
 
 public sealed record GameRow(string Id, string Name, string Detail, string Status, string Initials, System.Windows.Media.ImageSource? Artwork);
-public sealed record SnapshotRow(string Id, string Name, string Kind, string Created, int FileCount, string Size);
+public sealed record SnapshotRow(string Id, string Name, string Kind, string Created, int FileCount, string Size, string Components);
 public sealed record InstallationRow(string Id, string Name, string Created);
 public sealed record ManagedRow(string Name, string Folder, string Path, string Location);
 
@@ -40,7 +40,7 @@ public partial class MainWindow : Window
         this.store = store; this.engine = engine; this.smoke = smoke;
         thumbnails = new Thumbnails(thumbnailHttp, store.Home);
         InitializeComponent(); WindowChrome.Apply(this); Refresh();
-        if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); await StartupUpdateCheck(); };
+        if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); await StartupUpdateCheck(); await RefreshFingerprints(true); };
         Closed += (_, _) => { scanningCancellation.Cancel(); thumbnailCancellation?.Cancel(); thumbnailHttp.Dispose(); };
     }
 
@@ -109,7 +109,7 @@ public partial class MainWindow : Window
         SetupDescription.Text = game.Managed.Count == 0 ? "Review detected files and approve your selection once." : "Capture clean files before making changes.";
         SetupButton.Content = game.Managed.Count == 0 ? "Choose files…" : "Save Original…";
         var snapshots = game.Snapshots.Where(s => !s.Recovery || ShowRecovery.IsChecked == true).OrderByDescending(s => s.Created)
-            .Select(s => new SnapshotRow(s.Id, s.Name, s.Original ? "Original" : s.Recovery ? "Recovery" : "Backup", s.Created.LocalDateTime.ToString("g"), s.Files.Count(f => f.Hash != null), FormatSize(s.Files.Sum(f => f.Size)))).ToList();
+            .Select(s => new SnapshotRow(s.Id, s.Name, s.Original ? "Original" : s.Recovery ? "Recovery" : "Backup", s.Created.LocalDateTime.ToString("g"), s.Files.Count(f => f.Hash != null), FormatSize(s.Files.Sum(f => f.Size)), ComponentSummary(s))).ToList();
         SnapshotList.ItemsSource = snapshots; SnapshotList.SelectedItem = snapshots.FirstOrDefault(s => s.Id == snapshotId);
         var packages = game.Packages.OrderByDescending(p => p.Created).ToList();
         PackageList.ItemsSource = packages; PackageList.SelectedItem = packages.FirstOrDefault(p => p.Id == packageId);
@@ -339,6 +339,19 @@ public partial class MainWindow : Window
         game = Selected;
         await RenderDialog(new FileReviewDialog(this, store, game, FindFiles(game)), screenshot + ".files.png");
         await RenderDialog(new NameDialog(this, "Save backup", "Original", offerOriginal: true, preferOriginal: true), screenshot + ".version.png");
+        if (game.Snapshots.FirstOrDefault(s => !s.Recovery) is { } insightSnapshot)
+        {
+            var components = Fingerprints.Identify(store, insightSnapshot);
+            var graphics = GameSettingsReader.Snapshot(store, insightSnapshot);
+            if (!components.Identified.SelectMany(i => i.Matches).Any(m => m.Component == "FSR" && m.Version == "4.1.2.4555")
+                || !components.Identified.SelectMany(i => i.Matches).Any(m => m.Component == "OptiPatcher" && m.Version == "0.42"))
+                throw new InvalidOperationException("Real captured FSR/OptiPatcher fixtures were not recognized.");
+            if (!graphics.Observations.Any(o => o.Setting == "FSR quality preference" && o.Value == "Native AA") || !graphics.Observations.Any(o => o.Value == "2560 px"))
+                throw new InvalidOperationException("Captured Unreal graphics preferences were not extracted.");
+            await RenderDialog(new BackupInsightsDialog(this, insightSnapshot.Name, components, graphics), screenshot + ".insights.png");
+            await RenderDialog(new BackupInsightsDialog(this, "Captured graphics settings", null, graphics), screenshot + ".insights.png.settings.png");
+        }
+
         if (game.Snapshots.FirstOrDefault() is { } snapshot)
             await RenderDialog(new ChangeDialog(this, game, "Restore backup", "Review recorded file changes.", engine.Preview(game, snapshot.Files)), screenshot + ".changes.png");
         if (game.Packages.FirstOrDefault() is { } package)

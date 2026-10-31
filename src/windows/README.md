@@ -3,7 +3,7 @@
 Windows-specific integration around the shared core. This project contains no menus or command parsing.
 
 - `Discovery`: launcher installation metadata, custom-folder discovery and catalog merging. Missing or restricted metadata produces warnings; manual registration remains available.
-- `Detection`: graphics/mod/config candidates, executable selection candidates, external settings suggestions and running-game checks.
+- `Detection`: graphics/mod/config candidates, executable selection candidates, approved external-settings suggestions and running-game checks. Unreal INI candidates include GameUserSettings/Engine/Scalability and their Default variants; interpretation remains in the core's read-only reader.
 - `AmazonSqlite`: read-only access to Amazon Games' install database through Windows SQLite.
 - `Thumbnails`: keyless Steam manifest-ID/title matching, bounded HTTPS JPEG downloads and a hash-verified cache separate from game backups. Unknown IDs send game titles to Steam's public, undocumented storefront search; only a unique exact normalized-title match is accepted. Successful/no-match results are rechecked after 30/seven days, with explicit retry supported.
 - `UpdateHost`: shared CLI/desktop target discovery, verified same-release preparation, staged replacement, per-component health probes and group rollback/recovery. Recognized installed executables in the initiating app's folder update together; missing components and copies elsewhere are excluded.
@@ -14,6 +14,8 @@ Registry adapters and updater execution require Windows. The helper blocks runni
 Paired update jobs use independent schema 2 with `Companions`; legacy single-executable schema 1 remains supported. Terminal jobs are archived to `updates/last-update.json` before restart. Shared schema 1 `updates/last-check.json` caches the latest check result; catalog `CheckUpdates`/`LastUpdateCheck` control the common daily schedule.
 
 Update display, health/version checks and companion comparisons preserve four-component hotfix versions. Active session handles remain authoritative even for older clients: users should close the reported owner normally or wait for updates, never delete an active lock. If holder discovery is unavailable, the data-folder/access error remains visible.
+
+In development after v0.3.2, historical [component recognition](../../docs/component-recognition.md) and [Unreal settings extraction](../../docs/unreal-game-settings.md) add read-only backup insights. They belong to the shared core; candidate discovery does not infer which DLL/plugin is active or resolve Unreal's runtime configuration hierarchy. New metadata uses independently computed official-asset hashes and attributed Apache 2.0 DLSSync metadata, not copied GPL implementation/compatibility tables. No binary asset is executed, installed or bundled by recognition.
 
 The thumbnail client can be tested without Windows; `dotnet run --project tests -- --live-thumbnails` optionally exercises actual Steam matching, download and persistent-cache verification. Images are limited to 4 MiB, search responses to 1 MiB and cache metadata to 16 KiB. Endpoint failures remain optional: the desktop coordinator pauses downloads and retains local artwork/initials rather than blocking game operations. UI scheduling and the download opt-out belong to the desktop layer.
 

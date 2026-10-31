@@ -150,4 +150,25 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     run('snapshots', 'create', inv_id, 'Modded', '--yes')
     run('restore', inv_id, original['Id'], '--yes')
     assert not (inventory_game / 'custom.dat').exists()
+    # Inspect saved graphics preferences through the real CLI, then change live files.
+    graphics_game = root / 'Unreal graphics game'
+    graphics_game.mkdir()
+    (graphics_game / 'GameUserSettings.ini').write_text('[/Script/Engine.GameUserSettings]\nResolutionSizeX=2560\nResolutionSizeY=1440\nFullscreenMode=1\n', encoding='utf-8')
+    (graphics_game / 'Engine.ini').write_text('[SystemSettings]\nr.FidelityFX.FSR3.Enabled=1\nr.FidelityFX.FSR3.QualityMode=0\n', encoding='utf-8')
+    graphics_id = json.loads(run('games', 'add', 'Unreal graphics game', str(graphics_game)).stdout)['Id']
+    for config in ('GameUserSettings.ini', 'Engine.ini'):
+        run('files', 'add', graphics_id, config)
+    graphics_snapshot = json.loads(run('snapshots', 'create', graphics_id, 'Native AA').stdout)
+    captured = json.loads(run('settings', graphics_id, graphics_snapshot['Id'], '--json').stdout)
+    assert any(o['Setting'] == 'FSR quality preference' and o['Value'] == 'Native AA' for o in captured['Observations'])
+    (graphics_game / 'Engine.ini').write_text('[SystemSettings]\nr.FidelityFX.FSR3.QualityMode=3\n', encoding='utf-8')
+    current = json.loads(run('settings', graphics_id, '--json').stdout)
+    assert any(o['Value'] == 'Performance' for o in current['Observations'])
+    assert any(o['Value'] == 'Native AA' for o in json.loads(run('settings', graphics_id, graphics_snapshot['Id']).stdout)['Observations'])
+    catalog = json.loads(run('components', 'catalog', '--json').stdout)
+    assert catalog['Count'] >= 98
+    identity = json.loads(run('components', 'identify', graphics_id, graphics_snapshot['Id'], '--json').stdout)
+    assert not identity['Identified'], 'INI filenames must not identify installed DLL versions'
+    listed_graphics = json.loads(run('snapshots', 'list', graphics_id, '--json').stdout)
+    assert listed_graphics[0]['Components']['CatalogSha256'] == identity['CatalogSha256']
 print('PASS CLI end-to-end: backups, packages, game search, automatic bulk selection, extras, cancellation and validation')

@@ -12,7 +12,7 @@ function git(args) {
 }
 function files(root = '.') {
   return readdirSync(root, { withFileTypes: true }).flatMap(entry => {
-    if (['.git', '.context', 'bin', 'obj', 'node_modules', 'artifacts'].includes(entry.name)) return [];
+    if (['.git', '.context', 'bin', 'obj', 'node_modules', 'artifacts', '__pycache__'].includes(entry.name)) return [];
     const path = join(root, entry.name);
     return entry.isDirectory() ? files(path) : [path];
   });
@@ -42,6 +42,7 @@ try {
       run('dotnet', ['build', 'optiscaler-backup.sln', '-c', 'Release']);
       run('dotnet', ['run', '--project', 'tests', '-c', 'Release', '--no-build']);
       run('python3', ['scripts/test-cli.py', 'src/cli/bin/Release/net10.0/optibackup.dll']);
+      run('python3', ['scripts/test-component-catalog.py']);
       run('dotnet', ['format', 'optiscaler-backup.sln', '--verify-no-changes', '--no-restore']);
       git(['diff', '--check']);
       break;
