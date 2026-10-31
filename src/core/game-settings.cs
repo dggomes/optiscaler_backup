@@ -3,7 +3,10 @@ using System.Text;
 
 namespace OptiScalerBackup.Core;
 
-public sealed record SettingObservation(string File, string Layer, string Section, string Key, string RawValue, int Line, string Setting, string Value, string Confidence, string Source);
+public sealed record SettingObservation(string File, string Layer, string Section, string Key, string RawValue, int Line, string Setting, string Value, string Confidence, string Source)
+{
+    public string Scope => GameSettingsReader.IsOptiScaler(File) ? "OptiScaler" : "Game";
+}
 public sealed record GameSettingsReport(List<SettingObservation> Observations, List<string> Warnings)
 {
     public string Summary
@@ -11,21 +14,22 @@ public sealed record GameSettingsReport(List<SettingObservation> Observations, L
         get
         {
             if (Observations.Count == 0) return "No recognized settings recorded";
-            var values = Observations.Where(o => o.Setting is "Resolution width" or "Resolution height" or "Window mode" or "FSR quality preference")
+            var values = Observations.Where(o => o.Setting is "Resolution width" or "Resolution height" or "Window mode" or "FSR quality preference" || o.Setting.StartsWith("Game upscaling:") || o.Setting.StartsWith("Game frame generation:") || o.Setting.StartsWith("OptiScaler "))
                 .Select(o => o.Setting + ": " + o.Value).Distinct().ToList();
             return values.Count == 0 ? $"{Observations.Count} saved graphics values" : string.Join(" · ", values);
         }
     }
 }
 
-public static class GameSettingsReader
+public static partial class GameSettingsReader
 {
     public const int MaxBytes = 2 * 1024 * 1024;
     private const string Epic = "https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UGameUserSettings";
     private const string CVars = "https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-console-variables-reference";
     private const string Fsr = "https://gpuopen.com/learn/ue-fsr/";
     private static readonly HashSet<string> Names = new(StringComparer.OrdinalIgnoreCase)
-    { "GameUserSettings.ini", "Engine.ini", "Scalability.ini", "DefaultGameUserSettings.ini", "DefaultEngine.ini", "DefaultScalability.ini" };
+    { "GameUserSettings.ini", "Engine.ini", "Scalability.ini", "DefaultGameUserSettings.ini", "DefaultEngine.ini", "DefaultScalability.ini", "OptiScaler.ini" };
+    public static bool IsOptiScaler(string path) => path.Replace('\\', '/').Split('/').Last().Split(':').Last().Equals("OptiScaler.ini", StringComparison.OrdinalIgnoreCase);
     public static bool IsSettings(string path) => Names.Contains(Path.GetFileName(path.Replace('\\', '/')));
 
     public static GameSettingsReport Snapshot(Store store, Snapshot snapshot)
@@ -62,7 +66,7 @@ public static class GameSettingsReader
             catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or DecoderFallbackException)
             { warnings.Add(target.Path + ": " + error.Message); }
         }
-        if (observations.Count == 0) warnings.Add("Use Review / add files to approve GameUserSettings.ini or Engine.ini. External settings require path approval; custom fields may need a game-specific rule.");
+        if (observations.Count == 0) warnings.Add("Use Review / add files to approve game settings INIs or OptiScaler.ini. External settings require path approval; custom fields may need a game-specific rule.");
         return Finish(observations, warnings);
     }
     private static string Read(string file)
@@ -82,7 +86,7 @@ public static class GameSettingsReader
     {
         if (text.Length > MaxBytes || text.Contains('\0')) throw new IOException("Invalid or oversized settings text.");
         var observations = new List<SettingObservation>(); var warnings = new List<string>(); var section = ""; var number = 0;
-        var layer = file.Replace('\\', '/').Split('/').Last().Split(':').Last().StartsWith("Default", StringComparison.OrdinalIgnoreCase) ? "Project default" : "Saved/config candidate";
+        var layer = IsOptiScaler(file) ? "OptiScaler configuration" : file.Replace('\\', '/').Split('/').Last().Split(':').Last().StartsWith("Default", StringComparison.OrdinalIgnoreCase) ? "Project default" : "Saved/config candidate";
         using var input = new StringReader(text);
         while (input.ReadLine() is { } line)
         {
@@ -92,7 +96,7 @@ public static class GameSettingsReader
             var equals = value.IndexOf('='); if (equals < 1 || section.Length == 0) continue;
             var key = value[..equals].Trim(); var raw = StripComment(value[(equals + 1)..]).Trim().Trim('"');
             if (key[0] is '+' or '-' or '.' or '!') continue; // Unreal array operators are not scalar assignments.
-            var mapped = Map(section, key, raw);
+            var mapped = IsOptiScaler(file) ? MapOptiScaler(section, key, raw) : Map(section, key, raw);
             if (mapped != null) observations.Add(new(file, layer, section, key, raw, number, mapped.Value.Name, mapped.Value.Value, mapped.Value.Confidence, mapped.Value.Source));
         }
         return Finish(observations, warnings);
@@ -136,7 +140,7 @@ public static class GameSettingsReader
             if (standard.Item1.Length > 0)
                 return s is "graphics" or "display" ? ("Game-specific " + key, raw, "Raw game value; game-specific mapping required", Epic)
                     : (standard.Item1, standard.Item2, confidence, Epic);
-            if (new[] { "upscaler", "upscalingmethod", "upscalingmode", "upscalingquality", "dlssmode", "dlssquality", "fsrmode", "fsrquality", "xessmode", "xessquality", "antialiasingmethod" }.Contains(k))
+            if (new[] { "upscaler", "upscalingmethod", "upscalingmode", "upscalingquality", "dlssmode", "dlssquality", "fsrmode", "fsrquality", "xessmode", "xessquality", "antialiasingmethod", "upscaling", "upscalingtype", "upscalertype", "framegeneration", "framegenerationtype", "framegenerationmode", "framegenerationenabled", "bframegenerationenabled", "buseframegeneration", "framegen", "framegenmode", "dlssframegeneration", "busedlssframegeneration", "fsrframegeneration", "xessframegeneration" }.Contains(k))
                 return ("Game-specific " + key, raw, "Raw game value; game-specific mapping required", Epic);
         }
         if (s == "scalabilitygroups" && k == "sg.resolutionquality")
@@ -151,7 +155,9 @@ public static class GameSettingsReader
         if (new[] { "r.fidelityfx.fsr.", "r.fidelityfx.fsr3." }.Any(prefix => k == prefix + "qualitymode"))
             return ("FSR quality preference", raw switch { "0" => "Native AA", "1" => "Quality", "2" => "Balanced", "3" => "Performance", "4" => "Ultra Performance", _ => "Unmapped: " + raw }, "Documented FSR plugin enum; preference alone does not prove plugin is enabled", Fsr);
         if (new[] { "r.fidelityfx.fsr.", "r.fidelityfx.fsr2.", "r.fidelityfx.fsr3." }.Any(prefix => k == prefix + "enabled"))
-            return ("FSR plugin preference", Boolean(), "Saved enable preference; runtime selection is not measured", Fsr);
+            return ("Game upscaling: FSR", Boolean(), "Saved enable preference; runtime selection is not measured", Fsr);
+        var plugin = MapGamePlugin(k, raw);
+        if (plugin != null) return plugin;
         if (k.StartsWith("r.fidelityfx.fsr") && (k.EndsWith("qualitymode") || k.EndsWith("enabled")))
             return (key, raw, "Unmapped plugin family/version; raw saved value", Fsr);
         if (k.StartsWith("r.ngx.dlss.") || k.StartsWith("r.ngx.dlaa.") || k.StartsWith("r.streamline.dlssg."))

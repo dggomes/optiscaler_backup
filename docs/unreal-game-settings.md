@@ -1,10 +1,14 @@
-# Read-only Unreal game-settings extraction
+# Read-only Unreal and OptiScaler settings extraction
 
 Available from **v0.3.3**. It reports saved graphics preferences from approved/captured Unreal-style INIs; it does not edit settings, inspect a running game, choose an effective configuration layer or prove which upscaler is active. File parsing is local. Backup schema 2 remains unchanged.
+
+The game upscaling/frame-generation and `OptiScaler.ini` extension below is **unreleased**. Its additional fields, `Scope` classification and separate OptiScaler tab are not included in v0.3.3.
 
 ## Approved current files and historical coverage
 
 Supported filenames are `GameUserSettings.ini`, `Engine.ini`, `Scalability.ini`, `DefaultGameUserSettings.ini`, `DefaultEngine.ini` and `DefaultScalability.ini`, case-insensitively.
+
+The unreleased extension also accepts `OptiScaler.ini` through the same current-file approval and captured-payload verification rules. OptiScaler-specific keys are interpreted only in that filename, not inferred from similarly named sections in a game's INI.
 
 - **Current game:** read only matching targets already approved through managed-file selection, including explicitly approved external settings. No unrelated AppData/Documents tree is read automatically by this report.
 - **Saved snapshot:** read only matching files whose bytes were actually captured, verifying their stored hash/size first. Missing, corrupt, absent or uncaptured settings produce no invented values. There is no fallback to current game files or live external settings for an old snapshot.
@@ -51,7 +55,39 @@ The recognized `r.FidelityFX.FSR.QualityMode` and `r.FidelityFX.FSR3.QualityMode
 
 These mappings come from AMD's [FSR Unreal plugin guide](https://gpuopen.com/learn/ue-fsr/) and [FSR 3 plugin guide](https://gpuopen.com/learn/ue-fsr3/). They are not applied to arbitrary game-specific `FSRQuality` keys or to FSR2 numeric quality modes without a supported rule. Recognized FSR/FSR2/FSR3 enable keys remain saved enable preferences; a quality mode alone does not prove the plugin is enabled.
 
-Game-specific upscaler/quality/AA keys and recognized DLSS/DLAA/Streamline keys retain their raw values. A custom DLSS number is not translated into Quality/Performance/DLAA without a primary-source rule for that game's/plugin's enum. Unknown numeric values are not aliases for a known mode. These reports do not combine filename presence and INI preferences into a claim of runtime activation.
+Game-specific upscaler/quality/AA keys and plugin-specific quality modes retain their raw values. A custom DLSS number is not translated into Quality/Performance/DLAA without a primary-source rule for that game's/plugin's enum. Unknown numeric values are not aliases for a known mode. These reports do not combine filename presence and INI preferences into a claim of runtime activation.
+
+## Game upscaling and frame-generation extension — unreleased
+
+The current source recognizes the following saved plugin keys in supported game CVar sections. These are separate preferences, not a resolved active upscaler/frame-generator pair:
+
+| Saved key | Reported preference / mapper reference |
+| --- | --- |
+| `r.NGX.DLSS.Enable`, `r.NGX.DLAA.Enable` | Game DLSS upscaling / DLAA; [NVIDIA DLSS](https://developer.nvidia.com/rtx/dlss) |
+| `r.Streamline.DLSSG.Enable` | Game DLSS frame generation; [NVIDIA Unreal frame-generation guide](https://d29g4g2dyqv443.cloudfront.net/sites/default/files/DLSS_Frame_Generation_Quick_Start_Guide.pdf) |
+| `r.FidelityFX.FSR.Enabled`, `FSR2.Enabled`, `FSR3.Enabled` | Game FSR upscaling; [AMD plugin guide](https://gpuopen.com/learn/ue-fsr/) |
+| `r.FidelityFX.FI.Enabled` | Game FSR frame generation, separately from upscaling; [AMD plugin guide](https://gpuopen.com/learn/ue-fsr/) |
+| `r.XeSS.Enabled`, `r.XeFG.Enabled` | Game XeSS upscaling / frame generation; [Intel Unreal plugin README](https://github.com/GameTechDev/XeSSUnrealPlugin/blob/main/README.md) |
+
+The full FSR2/FSR3 enable names use the same `r.FidelityFX.` prefix. Documented enable toggles are interpreted as saved preferences, never runtime measurements. `r.XeSS.Quality` remains a raw plugin-version-specific value. Generic user-settings keys such as `UpscalingType`, `FrameGeneration`, `FrameGenerationMode`, `bUseFrameGeneration` and custom DLSS/FSR/XeSS frame-generation selectors remain raw and require a game-specific mapping; familiar names or numeric values do not establish universal enums.
+
+### OptiScaler configuration
+
+Approved current or verified captured `OptiScaler.ini` observations have `Scope: OptiScaler` and layer **OptiScaler configuration**. Game-file observations have `Scope: Game`. This is file-source classification, not measured API/plugin activity. No uncaptured historical INI is replaced with a live file.
+
+| INI section / key | Separately reported saved preference |
+| --- | --- |
+| `[Upscalers] Dx11Upscaler`, `Dx12Upscaler`, `VulkanUpscaler` | Output backend for each API; the reader does not select the API the game actually uses |
+| `[FrameGen] Enabled` | Frame-generation enable preference |
+| `[FrameGen] FGInput`, `FGOutput` | Input and output selectors, retained separately |
+| `[FrameGen] FGNvngxReplacement` | NVNGX replacement selector, separately from input/output |
+| `[FrameGen] FGType`, `[OptiFG] Enabled` | Legacy type/OptiFG enable preferences, not silently merged into newer fields |
+
+Mappings cite the official [v0.9.4 configuration](https://github.com/optiscaler/OptiScaler/blob/v0.9.4/OptiScaler.ini), [v0.7.9 legacy configuration](https://github.com/optiscaler/OptiScaler/blob/v0.7.9/OptiScaler.ini) and [current upstream configuration](https://github.com/optiscaler/OptiScaler/blob/master/OptiScaler.ini). The current source recognizes DLSS/XeSS, FSR 2.1/2.2 and FSR 3.1/backend tokens, including DX12-translation variants; `ffx` retains an unresolved FidelityFX version. **`fsr31` is a saved FSR 3.1 / FSR 4-capable backend selection, not proof that FSR 4 is running.**
+
+Frame-generation selectors distinguish no-FG, Streamline/NVNGX inputs, upscaler-driven input, FSR/OptiFG, XeSS and Nukem paths. Replacement values distinguish none, Nukem, DLSS Enabler, FidelityFX and combined paths. Missing fields create no inferred defaults. `auto` remains **Automatic / unspecified**; unknown selectors remain custom/unmapped, with raw values preserved. Saved enable/selector fields may disagree or depend on defaults, hardware and API; the report does not guess an effective runtime configuration.
+
+Desktop source splits **Graphics settings** (Game scope) from **OptiScaler settings**. Both show interpreted/raw values, file/line/layer, section/key and confidence/source links. Existing `settings <game-id> [snapshot-id]` CLI output adds `Scope` per observation in this unreleased extension; it does not modify files or change backup schema 2.
 
 ## CLI and desktop
 

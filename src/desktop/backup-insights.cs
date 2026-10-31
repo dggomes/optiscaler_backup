@@ -128,7 +128,18 @@ internal sealed class BackupInsightsDialog : ReviewDialog
             panel.Children.Add(new TextBlock { Text = components.Coverage + ". Matches use captured hashes; restoration separately verifies payload integrity. " + string.Join(" ", components.Warnings), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
             Grid.SetRow(table, 1); panel.Children.Add(table); tabs.Items.Add(new TabItem { Header = $"Components ({rows.Count})", Content = panel });
         }
-        var settingsTable = Table(); settingsTable.ItemsSource = settings.Observations.Select(o => new
+        tabs.Items.Add(SettingsTab("Graphics settings", settings, "Game"));
+        tabs.Items.Add(SettingsTab("OptiScaler settings", settings, "OptiScaler"));
+    }
+    internal void SelectSettingsScope(string scope)
+    {
+        if (Body.Children.OfType<TabControl>().SingleOrDefault() is { } tabs)
+            tabs.SelectedIndex = tabs.Items.Count - (scope == "OptiScaler" ? 1 : 2);
+    }
+    private static TabItem SettingsTab(string title, GameSettingsReport settings, string scope)
+    {
+        var observations = settings.Observations.Where(o => o.Scope == scope).ToList();
+        var settingsTable = Table(); settingsTable.ItemsSource = observations.Select(o => new
         {
             o.Setting,
             SavedValue = o.Value == o.RawValue ? o.Value : o.Value + " [raw: " + o.RawValue + "]",
@@ -139,8 +150,8 @@ internal sealed class BackupInsightsDialog : ReviewDialog
         settingsTable.Columns.Add(Column("Setting", "Setting", 165)); settingsTable.Columns.Add(Column("Saved value", "SavedValue", 190));
         settingsTable.Columns.Add(Column("File / line / layer", "Location", 200)); settingsTable.Columns.Add(Column("Section + key", "Key", 160)); settingsTable.Columns.Add(Column("Interpretation / source", "Interpretation", -1));
         var settingsPanel = new Grid(); settingsPanel.RowDefinitions.Add(new() { Height = GridLength.Auto }); settingsPanel.RowDefinitions.Add(new());
-        settingsPanel.Children.Add(new TextBlock { Text = settings.Summary + ". " + string.Join(" ", settings.Warnings), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+        settingsPanel.Children.Add(new TextBlock { Text = (observations.Count == 0 ? "No captured/approved " + title.ToLowerInvariant() + " were found." : new GameSettingsReport(observations, []).Summary + ".") + " Saved preferences; runtime selection is not measured. " + string.Join(" ", settings.Warnings), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
         Grid.SetRow(settingsTable, 1); settingsPanel.Children.Add(settingsTable);
-        tabs.Items.Add(new TabItem { Header = $"Graphics settings ({settings.Observations.Count})", Content = settingsPanel });
+        return new TabItem { Header = $"{title} ({observations.Count})", Content = settingsPanel };
     }
 }

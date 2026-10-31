@@ -156,14 +156,19 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     (graphics_game / 'GameUserSettings.ini').write_text('[/Script/Engine.GameUserSettings]\nResolutionSizeX=2560\nResolutionSizeY=1440\nFullscreenMode=1\n', encoding='utf-8')
     (graphics_game / 'Engine.ini').write_text('[SystemSettings]\nr.FidelityFX.FSR3.Enabled=1\nr.FidelityFX.FSR3.QualityMode=0\n', encoding='utf-8')
     graphics_id = json.loads(run('games', 'add', 'Unreal graphics game', str(graphics_game)).stdout)['Id']
-    for config in ('GameUserSettings.ini', 'Engine.ini'):
+    (graphics_game / 'OptiScaler.ini').write_text('[Upscalers]\nDx12Upscaler=fsr31\n[FrameGen]\nEnabled=true\nFGInput=dlssg\nFGOutput=xefg\n', encoding='utf-8')
+    for config in ('GameUserSettings.ini', 'Engine.ini', 'OptiScaler.ini'):
         run('files', 'add', graphics_id, config)
     graphics_snapshot = json.loads(run('snapshots', 'create', graphics_id, 'Native AA').stdout)
     captured = json.loads(run('settings', graphics_id, graphics_snapshot['Id'], '--json').stdout)
     assert any(o['Setting'] == 'FSR quality preference' and o['Value'] == 'Native AA' for o in captured['Observations'])
+    assert any(o['Scope'] == 'OptiScaler' and o['Setting'] == 'OptiScaler FG output' and o['Value'] == 'XeSS frame generation' for o in captured['Observations'])
+    (graphics_game / 'OptiScaler.ini').write_text('[FrameGen]\nFGOutput=fsrfg\n', encoding='utf-8')
     (graphics_game / 'Engine.ini').write_text('[SystemSettings]\nr.FidelityFX.FSR3.QualityMode=3\n', encoding='utf-8')
     current = json.loads(run('settings', graphics_id, '--json').stdout)
     assert any(o['Value'] == 'Performance' for o in current['Observations'])
+    assert any(o['Scope'] == 'OptiScaler' and o['Value'] == 'FSR frame generation' for o in current['Observations'])
+    assert any(o['Value'] == 'XeSS frame generation' for o in json.loads(run('settings', graphics_id, graphics_snapshot['Id']).stdout)['Observations'])
     assert any(o['Value'] == 'Native AA' for o in json.loads(run('settings', graphics_id, graphics_snapshot['Id']).stdout)['Observations'])
     catalog = json.loads(run('components', 'catalog', '--json').stdout)
     assert catalog['Count'] >= 98
