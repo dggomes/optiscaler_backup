@@ -52,6 +52,33 @@ try {
         'quality=high' | Set-Content $path
         $null = Invoke-Cli -CommandArgs @('files','add',$game.Id,$relative)
     }
+    $fingerprints = Get-Content 'src/core/component-fingerprints.json' -Raw | ConvertFrom-Json
+    foreach ($reference in @(
+        ($fingerprints.Records | Where-Object { $_.Component -eq 'OptiPatcher' -and $_.ReleaseTag -eq 'v0.42' } | Select-Object -First 1),
+        ($fingerprints.Records | Where-Object { $_.Component -eq 'FSR' -and $_.Role -eq 'upscaler' -and $_.Version -eq '4.1.2.4555' } | Select-Object -First 1)
+    )) {
+        $relative = if ($reference.Component -eq 'OptiPatcher') { 'plugins/OptiPatcher.asi' } else { 'amd_fidelityfx_upscaler_dx12.dll' }
+        $payload = Join-Path $testGame $relative
+        New-Item -ItemType Directory -Path (Split-Path $payload) -Force | Out-Null
+        Invoke-WebRequest -Uri $reference.AssetUrl -OutFile $payload -TimeoutSec 40
+        if ((Get-FileHash $payload -Algorithm SHA256).Hash.ToLowerInvariant() -ne $reference.Sha256) { throw 'Official fingerprint fixture changed; review catalog source' }
+        $null = Invoke-Cli -CommandArgs @('files','add',$game.Id,$relative)
+    }
+    @'
+[/Script/Engine.GameUserSettings]
+ResolutionSizeX=2560
+ResolutionSizeY=1440
+FullscreenMode=1
+bUseVSync=False
+[ScalabilityGroups]
+sg.ResolutionQuality=100
+'@ | Set-Content (Join-Path $testGame 'GameUserSettings.ini')
+    @'
+[SystemSettings]
+r.FidelityFX.FSR3.Enabled=1
+r.FidelityFX.FSR3.QualityMode=0
+'@ | Set-Content (Join-Path $testGame 'Engine.ini')
+    foreach ($file in @('GameUserSettings.ini','Engine.ini')) { $null = Invoke-Cli -CommandArgs @('files','add',$game.Id,$file) }
     $null = Invoke-Cli -CommandArgs @('snapshots','create',$game.Id,'Graphics baseline')
     Compress-Archive -Path (Join-Path $testGame 'OptiScaler.ini') -DestinationPath $testZip
     $map = Join-Path $testRoot 'mapping.json'
@@ -73,8 +100,8 @@ try {
     Invoke-Desktop -DataHome $testData -ImagePath $image
     $freshImage = Join-Path $images "fresh.png"
     Invoke-Desktop -DataHome (Join-Path $testRoot "empty-data") -ImagePath $freshImage
-    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.files-compact.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.update.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.changes.png'),($image+'.package.png'))) {
+    foreach ($path in @($freshImage,$image,($image+'.empty.png'),($image+'.game.png'),($image+'.managed.png'),($image+'.files-compact.png'),($image+'.packages.png'),($image+'.compact.png'),($image+'.settings.png'),($image+'.settings-bottom.png'),($image+'.update.png'),($image+'.offline.png'),($image+'.location.png'),($image+'.files.png'),($image+'.version.png'),($image+'.insights.png'),($image+'.insights.png.settings.png'),($image+'.changes.png'),($image+'.package.png'))) {
         if (-not (Test-Path $path) -or (Get-Item $path).Length -lt 1000) { throw "Desktop render missing/empty: $path" }
     }
-    Write-Host 'PASS desktop stale/read-only lock startup and close cleanup, pagination, global search, navigation, selection retention, 54-file compact workspace/filter, offline actions, cached thumbnail display/preferences, update controls/busy guard, recovery filtering and dialog rendering'
+    Write-Host 'PASS desktop stale/read-only lock startup and close cleanup, pagination, global search, navigation, selection retention, 58-file compact workspace/filter and real FSR/OptiPatcher/settings recognition, offline actions, cached thumbnail display/preferences, update controls/busy guard, recovery filtering and dialog rendering'
 } finally { Remove-Item $testRoot -Recurse -Force }

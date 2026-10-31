@@ -20,4 +20,15 @@ Snapshot creation inventories the entire game folder (regular-file hashes, paths
 
 Any inferred target beyond the manual selection is listed on stderr and requires capture confirmation. For scripts, review `snapshots create <game-id> Original --original --confirm-clean --dry-run`, then use the same command with `--yes` instead of `--dry-run` to accept the reviewed extras. Neither flag establishes cleanliness; `--confirm-clean` remains the user's assertion.
 
+## Component and Unreal-settings reports
+
+Available from v0.3.3:
+
+- `components catalog`: active catalog digest, record count and source evidence.
+- `components refresh`: fetch/validate this project's append-only recognition JSON; no component binary downloads or installation.
+- `components identify <game-id> <snapshot-id>`: all exact recorded hash/size matches, unknown builds and copied-bytes/inventory-only coverage. Renamed files can match; identification does not reverify payloads or prove runtime enablement.
+- `settings <game-id> [snapshot-id]`: current managed/approved INI observations, or verified captured INIs for that snapshot. Historical reports never fall back to live settings.
+
+Snapshot create/list output includes component reports automatically. Settings retain raw scalar/file/section/key/line evidence, layer/confidence hints and conflict warnings. Custom DLSS numeric enums remain unmapped; 100% scale is not a DLAA inference. See [component recognition](../../docs/component-recognition.md) and [Unreal settings](../../docs/unreal-game-settings.md) for limits, primary-source mappings and Apache 2.0 metadata attribution. Backup schema 2 is unchanged.
+
 Build/run instructions and complete workflows are in the [root README](../../README.md).

@@ -69,7 +69,7 @@ internal sealed partial class Application
             try
             {
                 var game = store.Game(id);
-                var choice = Pick(game.Name, ["Detect and select managed files", "List managed files", "Add a managed file", "Stop managing a file", "Create named snapshot", "Restore snapshot", "Rename snapshot", "Packages", "Select game executable"]);
+                var choice = Pick(game.Name, ["Detect and select managed files", "List managed files", "Add a managed file", "Stop managing a file", "Create named snapshot", "Restore snapshot", "Rename snapshot", "Packages", "Select game executable", "Inspect backup components and graphics settings", "Read current graphics settings", "Refresh recognition catalog"]);
                 switch (choice)
                 {
                     case -1: return;
@@ -99,6 +99,12 @@ internal sealed partial class Application
                         var selected = Pick("Actual game executable (choose nested Win64-Shipping where applicable)", exes);
                         if (selected >= 0) { game.Executables = [exes[selected]]; store.Save(); }
                         break;
+                    case 9:
+                        var insight = Pick("Backup components and settings", game.Snapshots.Select(s => s.Name).ToList());
+                        if (insight >= 0) { await Command("components", "identify", id, game.Snapshots[insight].Id); await Command("settings", id, game.Snapshots[insight].Id); }
+                        break;
+                    case 10: await Command("settings", id); break;
+                    case 11: await Command("components", "refresh"); break;
                 }
             }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.Text.Json.JsonException)
