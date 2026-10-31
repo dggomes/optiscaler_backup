@@ -96,6 +96,7 @@ internal static class ThumbnailTests
         using var http = new HttpClient(new FakeHttp(request =>
         {
             if (request.RequestUri!.Host == "store.steampowered.com") return Search((123, fixture.Game.Name));
+            if (request.RequestUri.Host == "api.steampowered.com") return new(HttpStatusCode.OK) { Content = new StringContent("{\"response\":{\"store_items\":[]}}") };
             if (request.RequestUri.AbsolutePath.EndsWith("library_600x900.jpg"))
             { portraits++; return missingPortrait ? new(HttpStatusCode.NotFound) : Image(); }
             headers++; return Image();
@@ -112,6 +113,26 @@ internal static class ThumbnailTests
         missingPortrait = true;
         Check(await service.Download(fixture.Game, true) == file && portraits == 3 && headers == 1);
         Check(await service.Download(fixture.Game, false) == file && portraits == 3 && headers == 1);
+    }
+
+    public static async Task HashedArtwork()
+    {
+        using var fixture = new Fixture(); var requests = new List<Uri>();
+        using var http = new HttpClient(new FakeHttp(request =>
+        {
+            var url = request.RequestUri!; requests.Add(url);
+            if (url.Host == "store.steampowered.com") return Search((123, "Fixture: Game"));
+            if (url.Host == "api.steampowered.com") return new(HttpStatusCode.OK) { Content = new StringContent("{\"response\":{\"store_items\":[{\"appid\":123,\"assets\":{\"library_capsule\":\"abc123/library_capsule.jpg\",\"header\":\"https://evil.invalid/header.jpg\"}}]}}") };
+            return url.AbsolutePath.Contains("abc123/") ? Image() : new(HttpStatusCode.NotFound);
+        }));
+        fixture.Game.Name = "Fixture: Game Ultimate Edition";
+        var service = new Thumbnails(http, fixture.Home, TimeSpan.Zero);
+        Check(await service.Download(fixture.Game, false) != null);
+        Check(requests.Any(u => u.Host == "api.steampowered.com") && requests.Any(u => u.AbsolutePath.EndsWith("abc123/library_capsule.jpg")));
+        Check(requests.All(u => u.Host != "evil.invalid"));
+        var metadata = Directory.GetFiles(Path.Combine(fixture.Home, "thumbnails"), "*.json").Single();
+        Store.Atomic(metadata, new ThumbnailRecord { Checked = DateTimeOffset.UtcNow, LookupRevision = 0 }); requests.Clear();
+        Check(await service.Download(fixture.Game, false) != null && requests.Count > 0);
     }
 
     public static async Task Live()

@@ -51,7 +51,7 @@ internal static class Program
 internal sealed class Arguments
 {
     private static readonly HashSet<string> Flags = ["yes", "json", "dry-run", "original", "confirm-clean", "allow-overlap", "override-edits", "external", "help", "version"];
-    private static readonly HashSet<string> Values = ["home", "map", "exe"];
+    private static readonly HashSet<string> Values = ["home", "map", "exe", "exclude-platform", "exclude-tag", "exclude-category"];
     private readonly Dictionary<string, string?> options = [];
     public List<string> Positionals { get; } = [];
     public Arguments(string[] args)
@@ -93,6 +93,12 @@ internal sealed partial class Application(Store store, Engine engine)
           optibackup games list
           optibackup games add <name> <folder> [--exe <relative-path>]
           optibackup games show <game-id>
+          optibackup games exclude <game-id> [--yes]
+          optibackup games excluded
+          optibackup games unexclude <game-id> [--yes]
+          optibackup playnite compare [export.json] [--exclude-platform "name;name"] [--exclude-tag names] [--exclude-category names]
+          optibackup playnite import <export.json> <all|playnite-id> [--dry-run] [--yes]
+          optibackup playnite configure <export.json> [--exclude-platform names] [--exclude-tag names] [--exclude-category names] [--yes]
           optibackup files list|detect <game-id>
           optibackup files add <game-id> <relative-path>
           optibackup files add <game-id> <absolute-file> --external
@@ -101,6 +107,7 @@ internal sealed partial class Application(Store store, Engine engine)
           optibackup components identify <game-id> <snapshot-id>
           optibackup settings <game-id> [snapshot-id]
           optibackup snapshots list <game-id>
+          optibackup snapshots compare <game-id> <before-id> <after-id>
           optibackup snapshots create <game-id> <name> [--original --confirm-clean] [--dry-run]
           optibackup snapshots rename <game-id> <snapshot-id> <name>
           optibackup restore <game-id> <snapshot-id> [--dry-run] [--yes]
@@ -128,6 +135,7 @@ internal sealed partial class Application(Store store, Engine engine)
                 discovery.Merge(store, discovery.Scan(args.Positionals.Skip(1)));
                 Output(GameRows(), args); break;
             case "games": Games(args); break;
+            case "playnite": PlayniteCommands(args); break;
             case "files": Files(args); break;
             case "snapshots": Snapshots(args); break;
             case "components": await Components(args); break;
@@ -146,7 +154,7 @@ internal sealed partial class Application(Store store, Engine engine)
         }
     }
 
-    private object GameRows() => store.Data.Games.Select(g => new { g.Id, g.Name, g.Directory, g.Sources, Available = Directory.Exists(g.Directory), g.Executables }).ToList();
+    private object GameRows() => store.VisibleGames.Select(g => new { g.Id, g.Name, g.Directory, g.Sources, Available = Directory.Exists(g.Directory), g.Executables }).ToList();
     private static void Output(object value, Arguments args)
     {
         // JSON is also the plain command format; menus provide compact human navigation.
@@ -165,6 +173,12 @@ internal sealed partial class Application(Store store, Engine engine)
         switch (args.At(1))
         {
             case "list": args.Count(2, 2); Output(GameRows(), args); break;
+            case "excluded": args.Count(2, 2); Output(store.Data.Games.Where(g => g.Excluded).ToList(), args); break;
+            case "exclude":
+            case "unexclude":
+                args.Count(3, 3); var excluded = args.At(1) == "exclude";
+                Confirm(excluded ? "Remove game from library and exclude future scans (backups are retained)" : "Restore game to library", args);
+                store.SetExcluded(args.At(2), excluded); Output(store.Game(args.At(2)), args); break;
             case "show": args.Count(3, 3); Output(store.Game(args.At(2)), args); break;
             case "add":
                 args.Count(4, 4);
@@ -175,6 +189,7 @@ internal sealed partial class Application(Store store, Engine engine)
                     throw new IOException("Game and application storage directories must not overlap.");
                 discovery.Merge(store, [new(args.At(2), path, "Manual")]);
                 var game = store.Data.Games.Single(g => g.Directory.Equals(Path.TrimEndingDirectorySeparator(path), StringComparison.OrdinalIgnoreCase));
+                if (game.Excluded) throw new InvalidOperationException("Game is excluded. Use games unexclude to restore it to the library.");
                 if (args.Get("exe") is { } exe)
                 {
                     exe = SafePaths.Relative(exe);
@@ -232,6 +247,7 @@ internal sealed partial class Application(Store store, Engine engine)
         switch (args.At(1))
         {
             case "list": args.Count(3, 3); Output(game.Snapshots.Select(SnapshotOutput), args); break;
+            case "compare": args.Count(5, 5); Output(BackupComparer.Compare(store, game, args.At(3), args.At(4)), args); break;
             case "create":
                 args.Count(4, 4);
                 if (args.Has("original")) Console.Error.WriteLine("Original records current files. Confirm clean only if you know they are unmodified.");

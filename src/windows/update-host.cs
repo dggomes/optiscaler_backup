@@ -226,7 +226,7 @@ public static class UpdateHost
         foreach (var file in files)
         {
             File.Copy(file.Download, file.Destination + ".incoming", true);
-            File.Move(file.Destination + ".incoming", file.Destination, true);
+            MoveIncoming(file);
         }
         foreach (var file in files)
         {
@@ -244,7 +244,23 @@ public static class UpdateHost
             var previous = file.Destination + ".previous";
             if (!File.Exists(previous) || SafePaths.Hash(previous) != file.PreviousHash) throw new IOException("Previous executable unavailable/corrupt; manual recovery required.");
             File.Copy(previous, file.Destination + ".incoming", true);
-            File.Move(file.Destination + ".incoming", file.Destination, true);
+            MoveIncoming(file);
+        }
+    }
+    private static void MoveIncoming(UpdateFile file)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            SafePaths.NoLinks(file.Destination); SafePaths.NoLinks(file.Destination + ".incoming");
+            try { File.Move(file.Destination + ".incoming", file.Destination, true); return; }
+            catch (Exception error) when (OperatingSystem.IsWindows() && attempt < 20
+                && (error is IOException or UnauthorizedAccessException) && (error.HResult & 0xffff) is 5 or 32 or 33)
+            {
+                // Windows may briefly retain an image/antivirus handle after WaitForExit.
+                // Keep the journal and original ACLs; persistent failures still surface.
+                Trace.WriteLine($"Updater replacement retry {attempt + 1}: {Path.GetFileName(file.Destination)}: {error.Message}");
+                Thread.Sleep(100);
+            }
         }
     }
     private static void Restart(string path, UpdateJob job)

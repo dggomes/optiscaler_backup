@@ -54,6 +54,7 @@ public sealed class Discovery(Action<string> warning)
         {
             var path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(item.Directory));
             var game = store.Data.Games.FirstOrDefault(g => g.Directory.Equals(path, StringComparison.OrdinalIgnoreCase));
+            if (game?.Excluded == true) continue;
             if (game == null)
             {
                 game = new Game { Name = Format.Label(item.Name), Directory = path };

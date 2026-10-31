@@ -19,12 +19,13 @@ public partial class MainWindow
     {
         if (scanningSources || pendingDiscovery != null) { StatusText.Text = "A library scan is already running."; return; }
         scanningSources = true; ScanStatus(); var warnings = new List<string>();
+        var excluded = store.Data.Games.Where(g => g.Excluded).Select(g => Path.TrimEndingDirectorySeparator(Path.GetFullPath(g.Directory))).ToHashSet(StringComparer.OrdinalIgnoreCase);
         try
         {
             var results = await Task.Run(() =>
             {
                 var source = new Discovery(warnings.Add);
-                return source.Prepare(discover(source), scanningCancellation.Token);
+                return source.Prepare(discover(source).Where(game => !excluded.Contains(Path.TrimEndingDirectorySeparator(Path.GetFullPath(game.Directory)))), scanningCancellation.Token);
             }, scanningCancellation.Token);
             scanningCancellation.Token.ThrowIfCancellationRequested();
             pendingDiscovery = results; discoveryWarnings = warnings;

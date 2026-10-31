@@ -50,6 +50,8 @@ public sealed class Installation
 }
 public sealed class Game
 {
+    public bool Excluded { get; set; }
+    public List<string> PlayniteIds { get; set; } = [];
     public string Id { get; set; } = Format.Id();
     public string Name { get; set; } = "";
     public string Directory { get; set; } = "";
@@ -63,6 +65,10 @@ public sealed class Game
 }
 public sealed class Settings
 {
+    public string? PlayniteLibraryPath { get; set; }
+    public List<string> PlayniteExcludePlatforms { get; set; } = [];
+    public List<string> PlayniteExcludeTags { get; set; } = [];
+    public List<string> PlayniteExcludeCategories { get; set; } = [];
     public string? BackupDirectory { get; set; }
     public bool CheckUpdates { get; set; } = true;
     public bool DownloadThumbnails { get; set; } = true;

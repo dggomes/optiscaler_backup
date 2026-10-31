@@ -40,7 +40,7 @@ public partial class MainWindow : Window
         this.store = store; this.engine = engine; this.smoke = smoke;
         thumbnails = new Thumbnails(thumbnailHttp, store.Home);
         InitializeComponent(); WindowChrome.Apply(this); Refresh();
-        if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); await StartupUpdateCheck(); await RefreshFingerprints(true); };
+        if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); StartThumbnails(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); await StartupUpdateCheck(); await RefreshFingerprints(true); };
         Closed += (_, _) => { scanningCancellation.Cancel(); thumbnailCancellation?.Cancel(); thumbnailHttp.Dispose(); };
     }
 
@@ -55,7 +55,7 @@ public partial class MainWindow : Window
         try
         {
             var query = SearchBox.Text.Trim();
-            var games = store.Data.Games.Where(g => g.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+            var games = store.VisibleGames.Where(g => g.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
                 .Where(g => filter == "all" || (filter == "protected") == HasBackup(g)).OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).ToList();
             totalMatches = games.Count;
             pageIndex = Math.Clamp(pageIndex, 0, Math.Max(0, (games.Count - 1) / PageSize));
@@ -63,7 +63,7 @@ public partial class MainWindow : Window
                 string.Join(" · ", g.Sources), !Directory.Exists(g.Directory) ? "Drive unavailable" : HasBackup(g) ? CountLabel(g.Snapshots.Count(s => !s.Recovery), "saved backup") : "No backup yet",
                 Initials(g.Name), artwork.GetValueOrDefault(g.Id))).ToList();
             GameList.ItemsSource = rows; GameList.SelectedItem = rows.FirstOrDefault(g => g.Id == selectedId);
-            LibraryCount.Text = $"{store.Data.Games.Count} games in library · {totalMatches} matching";
+            LibraryCount.Text = $"{store.VisibleGames.Count()} games in library · {totalMatches} matching";
             PageCount.Text = $"{pageIndex + 1} / {Math.Max(1, (games.Count + PageSize - 1) / PageSize)}";
             Pagination.Visibility = games.Count > PageSize ? Visibility.Visible : Visibility.Collapsed;
             PreviousPage.IsEnabled = pageIndex > 0; NextPage.IsEnabled = (pageIndex + 1) * PageSize < games.Count;
@@ -71,11 +71,11 @@ public partial class MainWindow : Window
             ClearSearchButton.Visibility = query.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
             EmptyState.Visibility = games.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             GameList.Visibility = games.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            EmptyTitle.Text = store.Data.Games.Count == 0 ? "Find your games" : "No games match";
-            EmptyDescription.Text = store.Data.Games.Count == 0 ? "Scan your installed launchers, or add a game folder. Then choose a game to save a backup."
+            EmptyTitle.Text = !store.VisibleGames.Any() ? "Find your games" : "No games match";
+            EmptyDescription.Text = !store.VisibleGames.Any() ? "Scan your installed launchers, or add a game folder. Then choose a game to save a backup."
                 : "Try another name or reset the filter to see your games.";
-            EmptyPrimary.Content = store.Data.Games.Count == 0 ? "Scan games" : "Reset search";
-            EmptySecondary.Visibility = store.Data.Games.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            EmptyPrimary.Content = !store.VisibleGames.Any() ? "Scan games" : "Reset search";
+            EmptySecondary.Visibility = !store.VisibleGames.Any() ? Visibility.Visible : Visibility.Collapsed;
             HeaderChrome.Visibility = page == Page.Game ? Visibility.Collapsed : Visibility.Visible;
             LibraryPanel.Visibility = page == Page.Library ? Visibility.Visible : Visibility.Collapsed;
             GamePanel.Visibility = page == Page.Game && selectedId != null ? Visibility.Visible : Visibility.Collapsed;
@@ -83,6 +83,8 @@ public partial class MainWindow : Window
             LibraryNav.IsChecked = page != Page.Settings; SettingsNav.IsChecked = page == Page.Settings;
             TopActions.Visibility = page == Page.Library ? Visibility.Visible : Visibility.Collapsed;
             PageDescription.Text = page == Page.Library ? "Choose a game to manage its backups and packages." : page == Page.Settings ? "Storage and application preferences." : "Back up, change settings, and return to a working version.";
+            ExcludedGamesList.ItemsSource = store.Data.Games.Where(g => g.Excluded).OrderBy(g => g.Name).ToList();
+            ExcludedCountText.Text = $"{store.Data.Games.Count(g => g.Excluded)} excluded games · backups retained";
             AutomaticUpdatesToggle.IsChecked = store.Data.Settings.CheckUpdates;
             DownloadThumbnailsToggle.IsChecked = store.Data.Settings.DownloadThumbnails;
             RetryThumbnailsButton.IsEnabled = store.Data.Settings.DownloadThumbnails;
@@ -156,7 +158,9 @@ public partial class MainWindow : Window
         RestoreButton.IsEnabled = online && snapshot; ShowFilesButton.IsEnabled = snapshot; RenameBackupButton.IsEnabled = snapshot;
         InstallButton.IsEnabled = online && PackageList.SelectedItem != null; RenamePackageButton.IsEnabled = !busy && PackageList.SelectedItem != null;
         RollbackButton.IsEnabled = online && InstallationList.SelectedItem != null;
+        CompareBackupsButton.IsEnabled = !busy && selectedId != null && Selected.Snapshots.Count >= 2;
         BackupInsightsButton.IsEnabled = snapshot; CurrentSettingsButton.IsEnabled = !busy && selectedId != null;
+        RemoveGameButton.IsEnabled = !busy && selectedId != null;
         UpdateUpdateActions();
     }
 
@@ -250,7 +254,7 @@ public partial class MainWindow : Window
 
     public async Task SmokeTest(string screenshot)
     {
-        var count = store.Data.Games.Count;
+        var count = store.VisibleGames.Count();
         int gameFileCount() => Selected.Managed.Count;
         SearchBox.Text = "__no_matching_game__";
         if (GameList.Items.Count != 0 || EmptyState.Visibility != Visibility.Visible) throw new InvalidOperationException("Search empty state failed.");
@@ -265,8 +269,8 @@ public partial class MainWindow : Window
         if (count > PageSize)
         {
             pageIndex = 1; Refresh();
-            if (((GameRow)GameList.Items[0]).Id == store.Data.Games.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).First().Id) throw new InvalidOperationException("Pagination failed.");
-            SearchBox.Text = store.Data.Games.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).Last().Name;
+            if (((GameRow)GameList.Items[0]).Id == store.VisibleGames.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).First().Id) throw new InvalidOperationException("Pagination failed.");
+            SearchBox.Text = store.VisibleGames.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).Last().Name;
             if (GameList.Items.Count != 1 || pageIndex != 0) throw new InvalidOperationException("Search must cover every page.");
             SearchBox.Clear();
         }
@@ -373,6 +377,12 @@ public partial class MainWindow : Window
         page = Page.Library; Refresh(); SearchBox.Text = "__no_matching_game__";
         if (selectedId != selected) throw new InvalidOperationException("Library search discarded the current game.");
         SearchBox.Clear();
+        var backupComparison = new BackupComparisonDialog(this, store, Format.Clone(Selected), (SnapshotList.SelectedItem as SnapshotRow)?.Id);
+        backupComparison.SelectVersions(Selected.Snapshots.First(snapshot => snapshot.Name == "Graphics baseline").Id, Selected.Snapshots.Single(snapshot => snapshot.Original).Id);
+        await backupComparison.Prepare(); await RenderDialog(backupComparison, screenshot + ".compare.png");
+        var comparisonLibrary = new PlayniteLibrary { ExportedUtc = DateTimeOffset.UtcNow, Games = store.VisibleGames.Take(2).Select(g => new PlayniteGame { Id = Guid.NewGuid().ToString(), Name = g.Name, InstallDirectory = g.Directory, Installed = true, Platforms = ["PC"], Tags = ["Windows UI test"] }).ToList() };
+        await RenderDialog(new PlayniteDialog(this, comparisonLibrary, store, Format.Clone(store.Data.Settings)), screenshot + ".playnite.png");
+        if (store.Data.Games.Any(g => g.Excluded) && ExcludedGamesList.Items.Count == 0) throw new InvalidOperationException("Excluded games were not available in Settings.");
         var offline = store.Data.Games.FirstOrDefault(g => !Directory.Exists(g.Directory));
         if (offline != null)
         {
@@ -428,6 +438,8 @@ public partial class MainWindow : Window
         dialog.UpdateLayout();
         if (dialog is ReviewDialog review) review.CheckInteraction();
         if (dialog is NameDialog name) name.ValidateLayout();
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        dialog.UpdateLayout();
         SaveImage((FrameworkElement)dialog.Content, file);
         dialog.Close();
     }

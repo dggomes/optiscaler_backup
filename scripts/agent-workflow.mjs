@@ -40,10 +40,12 @@ try {
     case 'check':
       security();
       run('dotnet', ['build', 'optiscaler-backup.sln', '-c', 'Release']);
+      run('dotnet', ['build', 'scripts/playnite/optiscaler-playnite.csproj', '-c', 'Release']);
       run('dotnet', ['run', '--project', 'tests', '-c', 'Release', '--no-build']);
       run('python3', ['scripts/test-cli.py', 'src/cli/bin/Release/net10.0/optibackup.dll']);
       run('python3', ['scripts/test-component-catalog.py']);
       run('dotnet', ['format', 'optiscaler-backup.sln', '--verify-no-changes', '--no-restore']);
+      run('dotnet', ['format', 'scripts/playnite/optiscaler-playnite.csproj', '--verify-no-changes', '--no-restore']);
       git(['diff', '--check']);
       break;
     case 'security': security(); break;

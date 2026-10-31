@@ -34,15 +34,21 @@ dotnet publish src/desktop/optiscaler-backup-desktop.csproj -c Release -r win-x6
 
 The library displays 72 compact cards per page: 112-pixel widths, 168-pixel artwork (2:3), and 10-pixel gutters. Title/status rows stay on one line; truncated names remain available in the card tooltip. Search matches partial game names across every page, ignoring case. Use **All games**, **With backups** or **No backups** filters; clear search or reset the filters from an empty result. Click a card or select it and press Enter to open the game.
 
-At startup, the app scans installed launchers and queues thumbnail checks for the entire catalog, across all pages and filters. Background downloads use installed Steam manifest IDs where available; otherwise the game's title is sent to Steam's public storefront search. Only a unique exact normalized-title match is accepted. The provider is free/keyless and uses HTTPS Steam CDN JPEG images, but its search endpoint is undocumented and may change or rate-limit requests.
+At startup, the app scans installed launchers and queues thumbnail checks for non-excluded catalog games, across all pages and filters. Background downloads use installed Steam manifest IDs where available; otherwise the game's title is sent to Steam's public storefront search. A unique exact normalized-title match is preferred; v0.3.5 also tries conservative, recognized edition/platform suffix removal and still rejects ambiguous matches. The provider is free/keyless and uses HTTPS Steam CDN JPEG images, but its search endpoint is undocumented and may change or rate-limit requests.
 
-Steam downloads request `library_600x900.jpg` portraits first and try `header.jpg` only on 404. Not every game exists on Steam or has a unique match/image. Downloaded thumbnails fall back to locally cached Steam covers, executable icons or name initials. Offline/service/rate-limit failures pause only the download queue; games and local backup operations remain usable. Unavailable game drives are labeled on cards and the game page.
+Steam downloads request `library_600x900.jpg` portraits first. Available from v0.3.5 resolves hashed Steam artwork paths through bounded asset metadata on 404, then tries header artwork. It displays only cached API artwork or explicitly imported Playnite covers; local launcher-cover/executable-icon scraping is removed. Name initials remain when no image is available. Not every title has a unique Steam match or usable image. Individual download failures are reported without blocking the remaining games or local backup operations. Unavailable game drives are labeled on cards and the game page.
 
 - `Ctrl+F`: return to the library and focus search.
 - `Escape`: return from game/settings to the library.
 - `F5`: scan installed launchers.
 
 The library toolbar also scans a custom folder or adds a game manually. Launcher and folder scans run in the background while the app remains usable; their catalog merge waits for an active file operation to finish. Library, game and settings are separate pages; changing the library search does not discard the current game.
+
+## Playnite and exclusions — v0.3.5
+
+These features are not in v0.3.4. Install the [local Playnite bridge](../../docs/playnite.md#install-the-bridge), restart or refresh Playnite, then use the library's **Playnite…** action or **Settings → Playnite → Compare / import…**. **Choose export…** selects another JSON file. The comparison shows export time, totals, missing/scanned-only entries and exact-name platform/tag/category filters separated by `;`. Changing filters clears row selections. Select individual eligible installed entries or **Select all eligible**, then **Save filters / import selected**. With no selections it saves the path/filters only. Covers are local JPEG/PNG files deliberately exported by the bridge; importing never edits Playnite's database or game files. An unavailable installation or invalid cover produces a warning; other selected entries may already have been imported. Live Playnite 10-host acceptance is pending; future Playnite 11 compatibility is not claimed.
+
+Right-click a card or use the game action **Remove and exclude…**, review the confirmation, and hide that installation from the library and future scans. Original, snapshots, packages and installation history are retained. **Settings → Excluded games → Restore** makes it visible again without restoring or reinstalling files. Playnite filters are a separate comparison/import preference, not permanent game exclusion. See [matching and count caveats](../../docs/playnite.md#comparison-and-import-rules).
 
 ## Game workflows
 
@@ -53,6 +59,8 @@ The **Files** table separates **File name**, **Folder** and **Location**; game f
 The setup guide offers file selection first, then **Save Original…** when no Original exists. Original setup rechecks missing detected files and offers batch review even if a regular backup already exists; external paths are never approved automatically. The clean/unmodified assertion requires explicit confirmation. Before capture, the app inventories the entire game folder's regular files/hashes and folders, excludes links, and shows a **Review backup** confirmation with inventory/target counts and paths. Initial capture copies approved target bytes only; later snapshots compare against Original's inventory or the earliest available inventory, copy changed/new files, record deletions and carry prior targets so versions remain self-contained. Original cannot recover unselected original bytes; it removes only later-tracked additions proven absent by its inventory. Full-game hashing can take time, and changed game assets or game-local saves/logs/caches can increase backup size.
 
 **Backups** supports rename and restore previews; recovery snapshots are hidden until **Show recovery backups** is checked. Snapshot, package and installation selections persist through refreshes. Buttons needing a selected row are disabled until one is chosen; capture, install, restore and rollback also require an available game folder.
+
+Available from v0.3.5 adds **Backups → Compare**. Choose **From backup** and **To backup** or **Swap** direction; filter **Changes**, **All**, a specific change type or **Unknown coverage**, and search case-insensitive paths. Counts cover Added/Removed/Changed/Unchanged/Unknown; columns show recorded SHA-256, size and each side's coverage. **Saved bytes** describes capture coverage, not a fresh payload integrity check; **Inventory only** does not promise restorable bytes. Missing legacy/external metadata, recorded directories and excluded link paths stay unknown rather than becoming removals. Comparison verifies inventory blobs but does not read live game files or saved file payloads, so the game drive may be offline. See [the full comparison rules](../../docs/storage-format.md#backup-comparison). Native Windows validation for this addition is in progress.
 
 **Show files** opens the selected snapshot's browsable full-copy folder. Files are read-only; edits are detected before restoration. Renaming uses a recovery journal so an interrupted rename can be rolled back safely.
 
@@ -78,7 +86,7 @@ The bundled fingerprint metadata works offline. Settings has a separate **Histor
 
 Settings places storage and thumbnail controls in the left column and update actions in the right, keeping related actions together without a long stacked page.
 
-**Download thumbnails automatically** is enabled by default; switch it off to stop future matching/download requests. Existing cached images remain available. **Refresh thumbnails** retries every catalog entry. Images live under `<home>/thumbnails`, separate from backup storage, with 4 MiB JPEG limits and SHA-256 verification. Successful entries are rechecked after 30 days; no-match entries after seven days. Moving backup storage does not relocate this cache. The same preference is available through CLI `config set download-thumbnails false` after closing the desktop app.
+**Download thumbnails automatically** is enabled by default; switch it off to stop future matching/download requests. Existing cached images remain available. **Refresh thumbnails** retries non-excluded catalog entries; valid explicitly imported Playnite covers are retained. Images live under `<home>/thumbnails`, separate from backup storage, with 4 MiB JPEG download limits and SHA-256 verification. Available from v0.3.5 additionally accepts explicitly imported JPEG/PNG covers, retries legacy lookup misses and reduces no-match caching to one day; successful Steam entries retain the 30-day window. Moving backup storage does not relocate this cache. The same preference is available through CLI `config set download-thumbnails false` after closing the desktop app.
 
 Older cached headers receive a background portrait attempt even when still within the 30-day window. Existing images remain visible offline or when downloads are disabled. Cache metadata records that a portrait was attempted, not that the final image is necessarily a portrait; a missing portrait may still use the header fallback.
 
@@ -94,10 +102,13 @@ First opening a schema 1 catalog converts existing snapshots to schema 2 folders
 - `main-window.xaml` / `.xaml.cs`: library/search, pagination, selection state and serialized background work.
 - `scanning.cs`: background discovery/file analysis, cancellation and deferred catalog merging.
 - `navigation.cs` / `game-actions.cs`: library/settings navigation, storage relocation and game backup/package workflows.
-- `game-artwork.cs`: cached-download/local Steam cover and executable-icon loading with initials supplied by the library.
+- `game-artwork.cs`: cached-image decoding; the library supplies initials when no image is available.
+- `playnite.cs`: local export selection, comparison, filters and reviewed import.
+- `game-exclusions.cs`: reversible library exclusions and settings restoration.
 - `thumbnails.cs`: catalog-wide background download scheduling, progress, retry and opt-out; matching/cache integrity belongs to the Windows adapter service.
 - `updates.cs`: shared daily/manual release checks, opt-out, release-note/target confirmation and staged update/restart.
 - `backup-insights.cs`: background fingerprint summaries, recognition-catalog refresh and read-only component/settings detail dialogs.
+- `backup-comparison.cs`: read-only From/To backup selection, direction swapping and change/path filters over core comparison results.
 - `theme.xaml` / `window-chrome.cs`: shared dark controls and native window styling.
 - `dialogs.cs`: managed-file batch selection, labels/Original confirmation, ZIP mappings and change/conflict previews.
 

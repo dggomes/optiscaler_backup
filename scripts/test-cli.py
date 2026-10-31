@@ -176,4 +176,33 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     assert not identity['Identified'], 'INI filenames must not identify installed DLL versions'
     listed_graphics = json.loads(run('snapshots', 'list', graphics_id, '--json').stdout)
     assert listed_graphics[0]['Components']['CatalogSha256'] == identity['CatalogSha256']
+    run('games', 'exclude', graphics_id, succeeds=False)
+    assert any(g['Id'] == graphics_id for g in json.loads(run('games', 'list').stdout))
+    run('games', 'exclude', graphics_id, '--yes')
+    assert not any(g['Id'] == graphics_id for g in json.loads(run('games', 'list').stdout))
+    assert any(g['Id'] == graphics_id for g in json.loads(run('games', 'excluded').stdout))
+    run('games', 'add', 'Should stay excluded', str(graphics_game), succeeds=False)
+    run('games', 'unexclude', graphics_id, '--yes')
+    assert any(s['Id'] == graphics_snapshot['Id'] for s in json.loads(run('snapshots', 'list', graphics_id).stdout))
+    import uuid
+    playnite_folder = root / 'playnite-export'
+    playnite_folder.mkdir()
+    (playnite_folder / 'cover.jpg').write_bytes(bytes([255,216,255,224,0,2,255,217]))
+    playnite_id = str(uuid.uuid4())
+    export = playnite_folder / 'library.json'
+    export.write_text(json.dumps({'Version': 1, 'Games': [
+        {'Id': playnite_id, 'Name': 'Unreal graphics game', 'InstallDirectory': str(graphics_game), 'Installed': True, 'Cover': 'cover.jpg', 'Platforms': ['PC'], 'Tags': ['Keep'], 'Categories': ['Games']},
+        {'Id': str(uuid.uuid4()), 'Name': 'Console entry', 'Platforms': ['Switch'], 'Tags': [], 'Categories': []}
+    ]}), encoding='utf-8')
+    run('playnite', 'configure', str(export), '--exclude-platform', 'Switch', '--yes')
+    comparison = json.loads(run('playnite', 'compare').stdout)['Comparison']
+    assert comparison['PlayniteTotal'] == 2 and comparison['FilteredOut'] == 1 and comparison['Matched'] == 1
+    assert len(json.loads(run('playnite', 'import', str(export), 'all', '--dry-run').stdout)) == 1
+    imported = json.loads(run('playnite', 'import', str(export), playnite_id, '--yes').stdout)
+    assert not imported['Warnings']
+    comparison_snapshot = json.loads(run('snapshots', 'create', graphics_id, 'Comparison version', '--yes').stdout)
+    backup_diff = json.loads(run('snapshots', 'compare', graphics_id, graphics_snapshot['Id'], comparison_snapshot['Id']).stdout)
+    assert backup_diff['Changed'] >= 2 and backup_diff['BeforeId'] == graphics_snapshot['Id']
+    assert any(row['Target']['Path'] == 'OptiScaler.ini' and row['Change'] == 'Changed' for row in backup_diff['Files'])
+    assert playnite_id in json.loads(run('games', 'show', graphics_id).stdout)['PlayniteIds']
 print('PASS CLI end-to-end: backups, packages, game search, automatic bulk selection, extras, cancellation and validation')

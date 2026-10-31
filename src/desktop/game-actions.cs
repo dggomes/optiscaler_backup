@@ -18,6 +18,8 @@ public partial class MainWindow
         var directory = System.IO.Path.GetFullPath(folder.FolderName);
         if (new[] { store.Home, store.PayloadRoot }.Any(root => directory.Equals(root, StringComparison.OrdinalIgnoreCase) || SafePaths.Within(root, directory) || SafePaths.Within(directory, root)))
             throw new IOException("Keep game folders separate from application and backup storage.");
+        if (store.Data.Games.Any(game => game.Excluded && Path.TrimEndingDirectorySeparator(game.Directory).Equals(Path.TrimEndingDirectorySeparator(directory), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("This game is excluded. Restore it from Settings → Excluded games.");
         var name = new NameDialog(this, "Add game", System.IO.Path.GetFileName(directory));
         if (name.ShowDialog() != true) return;
         var label = name.Value;

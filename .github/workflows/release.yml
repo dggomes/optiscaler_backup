@@ -23,6 +23,9 @@ jobs:
       - name: Publish
         shell: pwsh
         run: dotnet publish src/cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$env:RELEASE_VERSION -o artifacts/win-x64
+      - name: Test compiled Playnite export bridge
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-playnite-bridge.ps1 -Assembly scripts/playnite/bin/Release/net462/OptiScalerBackup.Playnite.dll -Cli artifacts/win-x64/optibackup.exe
       - name: Download previous schema release for compatibility test
         shell: bash
         env:
@@ -54,7 +57,8 @@ jobs:
         run: |
           Copy-Item artifacts/win-x64/optibackup.exe artifacts/optibackup-win-x64.exe
           Copy-Item artifacts/desktop/optibackup-ui.exe artifacts/optibackup-ui-win-x64.exe
-          foreach ($asset in @('optibackup-win-x64.exe', 'optibackup-ui-win-x64.exe')) {
+          Compress-Archive -Path scripts/playnite/bin/Release/net462/OptiScalerBackup.Playnite.dll,scripts/playnite/extension.yaml,scripts/playnite/README.md -DestinationPath artifacts/optibackup-playnite-bridge.zip
+          foreach ($asset in @('optibackup-win-x64.exe', 'optibackup-ui-win-x64.exe', 'optibackup-playnite-bridge.zip')) {
             $hash = (Get-FileHash (Join-Path artifacts $asset) -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $asset" | Set-Content (Join-Path artifacts ($asset + '.sha256')) -Encoding ascii
           }
@@ -65,8 +69,8 @@ jobs:
         run: |
           export PATH="/usr/bin:$PATH"
           if PATH="/usr/bin:$PATH" gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            PATH="/usr/bin:$PATH" gh release upload "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 --clobber
+            PATH="/usr/bin:$PATH" gh release upload "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 artifacts/optibackup-playnite-bridge.zip artifacts/optibackup-playnite-bridge.zip.sha256 --clobber
             PATH="/usr/bin:$PATH" gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
           else
-            PATH="/usr/bin:$PATH" gh release create "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 --verify-tag --generate-notes
+            PATH="/usr/bin:$PATH" gh release create "$GITHUB_REF_NAME" artifacts/optibackup-win-x64.exe artifacts/optibackup-win-x64.exe.sha256 artifacts/optibackup-ui-win-x64.exe artifacts/optibackup-ui-win-x64.exe.sha256 artifacts/optibackup-playnite-bridge.zip artifacts/optibackup-playnite-bridge.zip.sha256 --verify-tag --generate-notes
           fi

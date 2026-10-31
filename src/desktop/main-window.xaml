@@ -29,7 +29,7 @@
                 <StackPanel x:Name="TopActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="ScanButton" Content="Scan games" Click="Scan_Click" ToolTip="Find installed games from supported launchers (F5)"/>
                     <Button Content="Scan folder…" Click="ScanOptions_Click" ToolTip="Scan a custom game-library folder"/>
-                    <Button Content="Add game" Style="{StaticResource Primary}" Click="AddGame_Click" Margin="0"/>
+                    <Button Content="Playnite…" Click="Playnite_Click"/><Button Content="Add game" Style="{StaticResource Primary}" Click="AddGame_Click" Margin="0"/>
                 </StackPanel>
             </Grid>
             <StackPanel Grid.Row="1">
@@ -66,7 +66,7 @@
                                 <WrapPanel><Button x:Name="EmptyPrimary" Content="Scan games" Style="{StaticResource Primary}" Click="EmptyAction_Click"/><Button x:Name="EmptySecondary" Content="Add a game folder" Click="AddGame_Click"/></WrapPanel>
                             </StackPanel>
                         </Border>
-                        <ListBox x:Name="GameList" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource Ink}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="Game_Selected" PreviewMouseLeftButtonUp="Game_Activated" KeyDown="Game_KeyDown" AutomationProperties.Name="Games">
+                        <ListBox x:Name="GameList" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource Ink}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="Game_Selected" PreviewMouseLeftButtonUp="Game_Activated" KeyDown="Game_KeyDown" AutomationProperties.Name="Games" ContextMenuOpening="GameContextMenu_Opening"><ListBox.ContextMenu><ContextMenu/></ListBox.ContextMenu>
                             <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
                             <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="AutomationProperties.Name" Value="{Binding Name}"/><Setter Property="AutomationProperties.HelpText" Value="{Binding Status}"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,10,10"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="CardFrame" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="7"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="CardFrame" Property="BorderBrush" Value="{DynamicResource Accent}"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="CardFrame" Property="BorderBrush" Value="#7C9568"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="CardFrame" Property="BorderThickness" Value="2"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style></ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate><DataTemplate><Border Width="112" CornerRadius="6" Background="{DynamicResource Surface}" ClipToBounds="True" ToolTip="{Binding Name}">
@@ -91,6 +91,7 @@
                             <TextBlock x:Name="SourceText" Foreground="{DynamicResource Muted}" FontSize="11" VerticalAlignment="Center"/>
                             <TextBlock x:Name="SummaryText" Foreground="{DynamicResource Muted}" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
+                        <Button x:Name="RemoveGameButton" Grid.Column="1" Grid.Row="0" Content="Remove and exclude…" Style="{StaticResource Quiet}" Click="ExcludeGame_Click" MinHeight="26" Padding="8,3" FontSize="11"/>
                         <TextBlock x:Name="GameTitle" Grid.Row="1" FontFamily="{DynamicResource DisplayFont}" FontSize="24" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}" Margin="0,4,12,2"/>
                         <TextBlock x:Name="PathText" Grid.Row="2" Foreground="{DynamicResource Muted}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
                         <TextBlock x:Name="AvailabilityText" Grid.Row="3" Foreground="{DynamicResource ErrorInk}" TextWrapping="Wrap" Margin="0,4,0,0"/>
@@ -103,7 +104,7 @@
                     </Border>
                     <TabControl x:Name="GameTabs" Grid.Row="2">
                         <TabItem Header="Backups"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <DockPanel Margin="0,0,0,8"><CheckBox x:Name="ShowRecovery" Content="Show recovery backups" DockPanel.Dock="Right" VerticalAlignment="Center" Checked="RecoveryFilter_Changed" Unchecked="RecoveryFilter_Changed"/><WrapPanel><Button x:Name="RestoreButton" Content="Restore…" Click="Restore_Click"/><Button x:Name="BackupInsightsButton" Content="Components / settings…" Click="BackupInsights_Click"/><Button x:Name="ShowFilesButton" Content="Show files" Click="ShowFiles_Click"/><Button x:Name="RenameBackupButton" Content="Rename" Style="{StaticResource Quiet}" Click="RenameSnapshot_Click"/></WrapPanel></DockPanel>
+                            <DockPanel Margin="0,0,0,8"><CheckBox x:Name="ShowRecovery" Content="Show recovery backups" DockPanel.Dock="Right" VerticalAlignment="Center" Checked="RecoveryFilter_Changed" Unchecked="RecoveryFilter_Changed"/><WrapPanel><Button x:Name="RestoreButton" Content="Restore…" Click="Restore_Click"/><Button x:Name="CompareBackupsButton" Content="Compare…" Click="CompareBackups_Click"/><Button x:Name="BackupInsightsButton" Content="Components / settings…" Click="BackupInsights_Click"/><Button x:Name="ShowFilesButton" Content="Show files" Click="ShowFiles_Click"/><Button x:Name="RenameBackupButton" Content="Rename" Style="{StaticResource Quiet}" Click="RenameSnapshot_Click"/></WrapPanel></DockPanel>
                             <Border Grid.Row="1" Background="{DynamicResource Surface}" CornerRadius="9"><Grid><DataGrid x:Name="SnapshotList" SelectionChanged="ActionSelection_Changed" SelectionMode="Single" AutomationProperties.Name="Saved backups"><DataGrid.Columns><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Backup" Binding="{Binding Name}" Width="*"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Components / versions" Binding="{Binding Components}" Width="230"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Type" Binding="{Binding Kind}" Width="85"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Files" Binding="{Binding FileCount}" Width="60"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Size" Binding="{Binding Size}" Width="90"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Saved" Binding="{Binding Created}" Width="150"/></DataGrid.Columns></DataGrid>
                                 <StackPanel x:Name="BackupsEmpty" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="430" Margin="25"><TextBlock Text="No saved backups yet" FontSize="22" FontFamily="{DynamicResource DisplayFont}"/><TextBlock x:Name="BackupEmptyDescription" Text="Save your current settings before making changes. Recovery backups can be shown with the checkbox above." Style="{StaticResource MutedText}" Margin="0,10,0,0"/></StackPanel>
                             </Grid></Border>
@@ -141,8 +142,21 @@
                             <Border Background="{DynamicResource Surface}" CornerRadius="8" Padding="16" Margin="0,12,0,0"><StackPanel>
                                 <TextBlock Text="Game thumbnails" FontSize="15" FontWeight="SemiBold"/>
                                 <CheckBox x:Name="DownloadThumbnailsToggle" Content="Download thumbnails automatically" Click="ThumbnailSetting_Click" Margin="0,12,0,10"/>
-                                <TextBlock Text="Free Steam covers, cached for offline use. Game titles are sent to Steam when no installed Steam ID is available." Style="{StaticResource MutedText}" FontSize="12"/>
+                                <TextBlock Text="Free Steam API artwork and imported Playnite covers, cached offline. Game titles are sent for matching when needed. Unmatched or unavailable covers stay empty." Style="{StaticResource MutedText}" FontSize="12"/>
                                 <Button x:Name="RetryThumbnailsButton" Content="Refresh thumbnails" Click="RetryThumbnails_Click" HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                            </StackPanel></Border>
+                            <Border Background="{DynamicResource Surface}" CornerRadius="8" Padding="16" Margin="0,12,0,0"><StackPanel>
+                                <TextBlock Text="Playnite integration" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Import games and covers from the local bridge export. Compare counts and exclude platforms, tags or categories." Style="{StaticResource MutedText}" FontSize="12" Margin="0,8"/>
+                                <WrapPanel><Button Content="Compare / import…" Click="Playnite_Click"/><Button Content="Choose export…" Tag="browse" Click="Playnite_Click"/><Button Content="Get bridge ↗" Click="PlayniteBridge_Click" Style="{StaticResource Quiet}"/></WrapPanel>
+                            </StackPanel></Border>
+                            <Border Background="{DynamicResource Surface}" CornerRadius="8" Padding="16" Margin="0,12,0,0"><StackPanel>
+                                <TextBlock Text="Excluded games" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="ExcludedCountText" Style="{StaticResource MutedText}" FontSize="12" Margin="0,8,0,6"/>
+                                <ListBox x:Name="ExcludedGamesList" MaxHeight="160" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource Ink}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemTemplate><DataTemplate><DockPanel Margin="0,4"><Button DockPanel.Dock="Right" Content="Restore" Tag="{Binding Id}" Click="UnexcludeGame_Click" MinHeight="26" Padding="8,3"/><TextBlock Text="{Binding Name}" ToolTip="{Binding Directory}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/></DockPanel></DataTemplate></ListBox.ItemTemplate>
+                                </ListBox>
+                                <TextBlock Text="Right-click a library card to remove it. Excluded installations stay hidden during scans; restoring keeps their backups and history." Style="{StaticResource MutedText}" FontSize="12" Margin="0,6,0,0"/>
                             </StackPanel></Border>
                         </StackPanel>
                         <Border Grid.Column="2" Background="{DynamicResource Surface}" CornerRadius="8" Padding="16" VerticalAlignment="Top"><StackPanel>

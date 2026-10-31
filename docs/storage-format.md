@@ -17,6 +17,7 @@ Default home: `%LOCALAPPDATA%\OptiScalerBackup`. `--home <folder>` selects anoth
 | `errors.log` | Timestamped CLI/menu errors |
 | `updates/` | Downloaded releases, helper executables and application-update state |
 | `thumbnails/` | Optional downloaded artwork and thumbnail-cache metadata; separate from payload storage |
+| `playnite/` | Available from v0.3.5: default local bridge export `library.json` and exported covers; not snapshot storage |
 
 Paths beneath the configured payload root:
 
@@ -51,6 +52,14 @@ CLI/desktop errors use Windows Restart Manager in read-only diagnostic mode to i
 IDs are stable GUIDs encoded as 32 hexadecimal characters. Display labels are separate from IDs. A snapshot rename also renames its readable folder; labels do not become unchecked paths.
 
 Each game records its installation directory, launchers, executable candidates, selected managed targets, approved external roots, snapshots, packages and installation history. Paths use forward slashes in manifests and Windows case-insensitive comparison for matching.
+
+Available from v0.3.5 adds optional fields without changing catalog schema 2:
+
+- `Game.Excluded` defaults to `false`. Exclusion retains the entire game record, including Original, snapshots, packages and active installation history. Normal library lists, discovery merges and thumbnail queues skip excluded entries; unexclude changes visibility only.
+- `Game.PlayniteIds` defaults to an empty list and records imported Playnite GUIDs. Catalog game IDs remain independent. Imports match normalized case-insensitive installation paths; one catalog game can retain multiple Playnite IDs.
+- `Settings.PlayniteLibraryPath` optionally overrides the bridge export read path. `PlayniteExcludePlatforms`, `PlayniteExcludeTags` and `PlayniteExcludeCategories` default to empty lists and filter comparison/import by exact case-insensitive names. They neither delete catalog entries nor mark them excluded.
+
+The bridge default is `%LOCALAPPDATA%\OptiScalerBackup\playnite\library.json`, even when the app uses `--home`; choose/configure its path explicitly in that case. Its export has an independent version 1 format, documented in [Playnite integration](playnite.md#export-format-and-bounds). Moving backup payload storage does not move the bridge export or thumbnail cache.
 
 A target has `Root` and `Path`:
 
@@ -88,20 +97,32 @@ Inventories contain hashes, not original file bytes. If an original game file wa
 
 Unchecking a file changes manual selection, but previously captured targets and inventory-detected differences can remain in later plans to keep versions self-contained. Historical copies remain intact. Empty directory entries support absence reasoning; they do not promise recreation of the entire game directory tree.
 
+## Backup comparison
+
+Available from v0.3.5 adds `snapshots compare <game-id> <before-id> <after-id>` and desktop **Backups → Compare** without changing catalog schema 2 or auxiliary inventory schema 1. Both IDs must belong to that game's snapshots. Comparison is read-only and directional: **Added** means absent before/present after, and **Removed** means present before/absent after. Swapping versions reverses those categories.
+
+The comparer unions the recorded file targets from both snapshots and their inventories. Inventory blobs are hash-verified and validated before use. Explicit snapshot file states take precedence over inventory entries: present states have **Saved bytes** coverage, explicit null hashes have **Recorded absent** coverage, and uncopied inventory records have **Inventory only** coverage. Matching SHA-256 and recorded size is **Unchanged**; other known present states are **Changed**. Known absence on both sides is also unchanged. SHA/size columns describe recorded capture metadata, not hashes recomputed from snapshot payloads.
+
+For an otherwise missing game target, a full inventory can establish **Inventory absence** only when that path is neither a recorded directory nor within an excluded link subtree. Recorded directories, excluded link paths, legacy snapshots without inventories and unrecorded external targets have unknown coverage. If either side is unknown, the row is **Unknown coverage**, never an inferred addition/removal. The report covers file targets, not a directory-tree diff; directory records support conservative absence reasoning only.
+
+No live game file, executable or external settings root is opened. Comparisons therefore work with disconnected game drives, provided the catalog and referenced inventory blobs remain available. Saved file payload bytes are not verified by comparison: a **Saved bytes** label does not establish current restore integrity, and an **Inventory only** hash cannot reconstruct uncaptured bytes. Restore verifies its own payloads before mutation. The UI's **Changes** filter hides unchanged rows; **All**, individual change filters and path search do not alter the full report counts. No snapshot, game file or catalog state is changed.
+
 ## Optional thumbnail cache
 
 Catalog schema 2 includes an optional `Settings.DownloadThumbnails` Boolean, defaulting to `true` when absent. This preference does not change snapshot/package formats or require a catalog migration. It controls desktop matching/download requests; previously cached images remain usable when disabled.
 
 `<home>/thumbnails` is independent of `Settings.BackupDirectory`. Backup relocation does not copy/move it, and thumbnail data is not required to restore games. Entries use a SHA-256 key derived from the catalog game ID, name and installation directory:
 
-- `<key>.jpg`: downloaded JPEG, limited to 4 MiB and checked against its recorded SHA-256 before use.
-- `<key>.json`: independent thumbnail-cache schema **1**, with `Version`, UTC `Checked`, optional Steam `AppId`, optional image `Hash` and optional `PortraitChecked` (default `false`). Metadata is bounded to 16 KiB; unknown cache versions are rejected without rewriting them.
+- `<key>.jpg`: image bytes limited to 4 MiB, checked against their recorded SHA-256 before use. Available from v0.3.5 keeps this cache filename for both Steam JPEGs and explicitly imported Playnite JPEG/PNG covers; the suffix does not establish the image encoding.
+- `<key>.json`: independent thumbnail-cache schema **1**, with `Version`, UTC `Checked`, optional Steam `AppId`, optional image `Hash` and optional `PortraitChecked` (default `false`). Available from v0.3.5 adds optional `Source` (default `Steam`) and `LookupRevision` (default `0`). Metadata is bounded to 16 KiB; unsupported cache versions are rejected without rewriting them.
 
-Successful entries are rechecked after 30 days; no-match entries after seven days. A valid older image with `PortraitChecked: false` gets a background portrait refresh without waiting for that freshness window. `PortraitChecked` means a portrait request was attempted, not that the stored image is a portrait: Steam's `library_600x900.jpg` is requested first, with `header.jpg` fallback on 404. This optional field does not bump cache schema 1 or backup schema 2.
+Available from v0.3.5 keeps successful Steam entries for 30 days, reduces no-match freshness from seven days to one day, and retries old entries whose lookup revision predates the new matcher. Valid `Source: Playnite` covers are retained rather than replaced by Steam refresh, including explicit retry. These optional metadata fields do not bump cache schema 1 or backup schema 2.
 
-Explicit **Refresh thumbnails** bypasses freshness windows. Image replacement and metadata writes use temporary files; unavailable images retain local-cover/icon/initial fallbacks. Corrupt cached image bytes are rejected and may be downloaded again. Old valid images remain usable offline or when downloads are disabled.
+A valid older image with `PortraitChecked: false` gets a background portrait attempt. This records an attempt, not guaranteed portrait coverage. Steam's fixed portrait URL is tried first; v0.3.5 additionally validates bounded per-app asset metadata for hashed artwork paths before header fallback. Ambiguous title matches remain unresolved; conservative known edition/platform suffix matching supplements exact normalized matching.
 
-The desktop attempts all catalog entries in the background, using an installed Steam ID or a unique exact normalized-title match. Unknown IDs send game names to Steam's public, undocumented search endpoint; image requests use HTTPS Steam CDN URLs. Requests need no API key. Search responses are limited to 1 MiB. Offline/rate-limit failures pause image requests rather than backup operations. Application updates and optional thumbnail matching/downloads are the app's network uses; snapshot/package operations remain local.
+Explicit **Refresh thumbnails** bypasses Steam freshness windows. Image replacement and metadata writes use temporary files. Corrupt cached image bytes are rejected; valid cached images remain usable offline or with downloads disabled. The desktop uses cached API images or explicitly imported Playnite covers, with name initials when absent; it no longer scrapes local launcher artwork or executable icons in v0.3.5.
+
+The desktop attempts non-excluded catalog entries in the background. Unknown Steam IDs send game names to Steam's public, undocumented search endpoint; artwork/asset requests use fixed HTTPS Steam endpoints without API keys. Search/asset responses are limited to 1 MiB. Individual network failures leave other entries and local file operations usable; neither a match nor a cover is guaranteed for every game. Network uses also include application updates and this project's optional recognition-catalog JSON; snapshot/package operations and Playnite import remain local.
 
 ## Automatic schema 1 conversion
 

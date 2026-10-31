@@ -32,7 +32,7 @@ public partial class MainWindow
         var generation = ++thumbnailGeneration;
         if (smoke || !store.Data.Settings.DownloadThumbnails)
         { ArtworkStatus.Text = store.Data.Settings.DownloadThumbnails ? "" : "Online thumbnails off"; return; }
-        var games = store.Data.Games.Select(Format.Clone).ToList();
+        var games = store.VisibleGames.Select(Format.Clone).ToList();
         if (games.Count == 0) { ArtworkStatus.Text = ""; return; }
         var source = thumbnailCancellation = new();
         ArtworkStatus.Text = $"Checking thumbnails · 0 / {games.Count}";
@@ -44,24 +44,27 @@ public partial class MainWindow
         var completed = 0; var available = 0; var unavailable = 0;
         try
         {
-            foreach (var game in games)
+            await Parallel.ForEachAsync(games, new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = source.Token }, async (game, cancellation) =>
             {
-                source.Token.ThrowIfCancellationRequested();
                 string? path = null;
-                try { path = await Task.Run(() => thumbnails.Download(game, retry, source.Token), source.Token); }
-                catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or JsonException)
-                { Trace.WriteLine($"Thumbnail game={game.Id}: {error.Message}"); unavailable++; }
-                completed++; if (path != null) available++;
-                if (generation != thumbnailGeneration) return;
-                ArtworkStatus.Text = $"Checking thumbnails · {completed} / {games.Count}";
-                if (path != null)
+                try { path = await thumbnails.Download(game, retry, cancellation); }
+                catch (OperationCanceledException) when (source.IsCancellationRequested) { throw; }
+                catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or JsonException or HttpRequestException or TaskCanceledException)
+                { Trace.WriteLine($"Thumbnail game={game.Id}: {error.Message}"); Interlocked.Increment(ref unavailable); path = CachedThumbnail(game); }
+                var count = Interlocked.Increment(ref completed); if (path != null) Interlocked.Increment(ref available);
+                await Dispatcher.InvokeAsync(() =>
                 {
-                    artwork.Remove(game.Id);
-                    if (page == Page.Library && GameList.Items.Cast<GameRow>().Any(row => row.Id == game.Id)) await LoadArtwork();
-                }
-            }
+                    if (generation != thumbnailGeneration || cancellation.IsCancellationRequested) return;
+                    ArtworkStatus.Text = $"Checking thumbnails · {count} / {games.Count}";
+                    if (path != null)
+                    {
+                        artwork.Remove(game.Id);
+                        if (page == Page.Library && GameList.Items.Cast<GameRow>().Any(row => row.Id == game.Id)) _ = LoadArtwork();
+                    }
+                });
+            });
             if (generation == thumbnailGeneration)
-                ArtworkStatus.Text = $"Thumbnails checked · {available} cached · {games.Count - available} using local art or initials" + (unavailable > 0 ? $" · {unavailable} unavailable" : "");
+                ArtworkStatus.Text = $"Thumbnails checked · {available} cached · {games.Count - available} without API artwork" + (unavailable > 0 ? $" · {unavailable} unavailable" : "");
         }
         catch (OperationCanceledException) when (source.IsCancellationRequested) { }
         catch (Exception error) when (error is HttpRequestException or TaskCanceledException)
@@ -69,7 +72,7 @@ public partial class MainWindow
             Trace.WriteLine("Thumbnail downloads paused: " + error.Message);
             if (generation == thumbnailGeneration)
                 ArtworkStatus.Text = error is HttpRequestException { StatusCode: System.Net.HttpStatusCode.TooManyRequests }
-                    ? "Steam rate limit reached · downloads paused. Retry later from Settings."
+                    ? "Artwork service rate limit reached · downloads paused. Retry later from Settings."
                     : "Thumbnail downloads paused · offline or service unavailable. Retry from Settings.";
         }
         finally { if (ReferenceEquals(thumbnailCancellation, source)) thumbnailCancellation = null; source.Dispose(); }
