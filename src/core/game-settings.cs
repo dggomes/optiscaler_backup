@@ -21,7 +21,7 @@ public sealed record GameSettingsReport(List<SettingObservation> Observations, L
 public static class GameSettingsReader
 {
     public const int MaxBytes = 2 * 1024 * 1024;
-    private const string Epic = "https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/UGameUserSettings";
+    private const string Epic = "https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UGameUserSettings";
     private const string CVars = "https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-console-variables-reference";
     private const string Fsr = "https://gpuopen.com/learn/ue-fsr/";
     private static readonly HashSet<string> Names = new(StringComparer.OrdinalIgnoreCase)
