@@ -45,7 +45,7 @@ internal sealed class BackupComparisonDialog : ReviewDialog
         swap.Margin = new Thickness(10, 22, 10, 0); Grid.SetColumn(swap, 1); versions.Children.Add(swap);
         var right = new StackPanel(); System.Windows.Automation.AutomationProperties.SetName(after, "To backup"); right.Children.Add(new TextBlock { Text = "To backup", Margin = new Thickness(0, 0, 0, 5) }); right.Children.Add(after); Grid.SetColumn(right, 2); versions.Children.Add(right); header.Children.Add(versions);
         var tools = new DockPanel { Margin = new Thickness(0, 10, 0, 0) };
-        filter.ItemsSource = new[] { "Changes", "All", "Added", "Removed", "Changed", "Unknown coverage", "Unchanged" }; filter.SelectedIndex = 0; filter.MinWidth = 150; System.Windows.Automation.AutomationProperties.SetName(filter, "Filter changes"); System.Windows.Automation.AutomationProperties.SetName(search, "Search file paths");
+        filter.ItemsSource = new[] { "Changes", "All", "Added", "Removed", "Changed", "Unknown coverage", "Unchanged" }; filter.SelectedIndex = 0; filter.MinWidth = 180; System.Windows.Automation.AutomationProperties.SetName(filter, "Filter changes"); System.Windows.Automation.AutomationProperties.SetName(search, "Search file paths");
         var hashes = new CheckBox { Content = "Show hashes", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
         DockPanel.SetDock(hashes, Dock.Right); tools.Children.Add(hashes);
         DockPanel.SetDock(filter, Dock.Left); tools.Children.Add(filter); tools.Children.Add(new TextBlock { Text = "Search path", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 8, 0) }); tools.Children.Add(search); header.Children.Add(tools);
