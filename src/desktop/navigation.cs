@@ -30,7 +30,7 @@ public partial class MainWindow
     private void ClearSearch_Click(object sender, RoutedEventArgs e) { SearchBox.Clear(); SearchBox.Focus(); }
     private async void EmptyAction_Click(object sender, RoutedEventArgs e)
     {
-        if (store.Data.Games.Count == 0) { Scan_Click(sender, e); return; }
+        if (!store.VisibleGames.Any()) { Scan_Click(sender, e); return; }
         filter = "all"; FilterAll.IsChecked = true; pageIndex = 0; SearchBox.Clear(); Refresh(); await LoadArtwork();
     }
     private async void PreviousPage_Click(object sender, RoutedEventArgs e) { if (pageIndex > 0) { pageIndex--; Refresh(); await LoadArtwork(); } }

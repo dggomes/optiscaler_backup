@@ -52,8 +52,8 @@ If another app/updater still holds the lock, close that app normally or let its 
 
 Run `optibackup-ui-win-x64.exe` on Windows, or build it using the [desktop instructions](src/desktop/README.md). It opens the same library, snapshots and package history as the CLI. Close other sessions using that catalog before launching it.
 
-- Browse a dark library of compact 2:3 portrait cards, 72 games per page, with **All games**, **With backups** and **No backups** filters. Titles/status occupy one line; hover a card for the full game name. Search partial names across the whole library, ignoring case; clear search or reset filters when needed. Startup scans installed launchers, then checks the entire catalog for thumbnails in the background, including games outside the current page/filter.
-- Thumbnail downloads are free and need no API key. Installed Steam IDs are preferred; other titles use a unique exact normalized-name match through Steam's public storefront search, then a Steam CDN image. Some titles have no unique Steam match or available image: locally cached covers, executable icons or initials remain the fallback.
+- Browse a dark library of compact 2:3 portrait cards, 72 games per page, with **All games**, **With backups** and **No backups** filters. Titles/status occupy one line; hover a card for the full game name. Search partial names across the whole library, ignoring case; clear search or reset filters when needed. Startup scans installed launchers, then checks non-excluded catalog games for thumbnails in the background, including games outside the current page/filter.
+- Thumbnail downloads are free and need no API key. Installed Steam IDs are preferred; other titles use a unique exact normalized-name match through Steam's public storefront search, then a Steam CDN image. Some titles have no unique Steam match or available image; name initials remain visible when artwork is unavailable. Upcoming v0.3.5 also supports conservative edition-suffix matching and explicitly imported Playnite covers; it no longer searches local launcher artwork or executable icons.
 - Use `Ctrl+F` for library search, `Escape` to return from a game/settings page, and `F5` to scan installed launchers. Scan custom folders or add games manually. Cards label unavailable drives; file-changing actions require an available game folder.
 - Opening a game detects new standard-file candidates and shows their count. **Files → Review / add files…** includes current selections and new candidates in one batch, with proxy evidence and external paths. Add existing files or absent relative paths; unchecking changes the manual selection, while inventory-detected changes and previously captured targets can still be included in later backups. Existing snapshots remain intact. The file table separates filenames, folders and locations; filter by filename/path, see matching counts, or hover for full paths. Switching games clears the file filter.
 - The setup guide helps choose files and establish a clean, user-confirmed **Original**. In **Backups**, save/rename versions, preview restoration, or use **Show files** to open the selected folder. Recovery backups are hidden by default; enable **Show recovery backups** to inspect them. Row selections survive refreshes, and selection-dependent actions stay disabled until a row is chosen.
@@ -67,13 +67,32 @@ Launcher/folder discovery runs in the background while the app remains usable; c
 
 Downloads are enabled by default. **Settings → Download thumbnails automatically** disables future image requests; **Refresh thumbnails** retries the catalog. Cached images remain usable offline. When no installed Steam ID is available, the game's name is sent to Steam for matching. The search endpoint is public and keyless but undocumented, so availability and rate limits can change. No match is guessed when several exact matches exist.
 
-Images are HTTPS JPEG downloads limited to 4 MiB and verified with SHA-256 in the local cache at `%LOCALAPPDATA%\OptiScalerBackup\thumbnails` (or `<home>/thumbnails` with `--home`). Steam's `library_600x900.jpg` portrait is requested first, with `header.jpg` fallback on 404. Older cached headers get a background portrait attempt without waiting for their normal 30-day refresh; existing images remain usable offline or with downloads disabled. Otherwise successful results are rechecked after 30 days and no-match results after seven days. Offline/service/rate-limit failures pause image downloads without blocking backup, restore or package operations. Changing the backup location does not move this separate cache.
+Images are HTTPS JPEG downloads limited to 4 MiB and verified with SHA-256 in the local cache at `%LOCALAPPDATA%\OptiScalerBackup\thumbnails` (or `<home>/thumbnails` with `--home`). Steam's portrait is requested first; v0.3.5 additionally resolves hashed artwork paths through Steam asset metadata before falling back to headers, retries old matching misses and reduces no-match caching from seven days to one day. Successful entries retain their 30-day window. Existing valid images remain usable offline or with downloads disabled, and individual download failures do not block game operations. Upcoming v0.3.5 Playnite imports also accept local PNG covers up to 4 MiB. Changing the backup location does not move this separate cache.
 
 The app's network use is application updates, optional thumbnail matching/downloads and, from v0.3.3, this project's recognition-catalog JSON under the update-check opt-out. Game-file backup and package operations stay local; local game names/hashes are not uploaded by recognition refresh. To disable thumbnail downloads from the CLI while the desktop app is closed:
 
 ```powershell
 .\optibackup.exe config set download-thumbnails false
 ```
+
+## Playnite and game exclusions — v0.3.5
+
+These additions are in development, not included in the current v0.3.4 release. [Set up the local Playnite bridge](docs/playnite.md), restart or refresh Playnite, then choose **Playnite…** to compare its export with scanned games. Review platform/tag/category exclusions, select individual eligible installed games or **Select all eligible**, then approve import. It adds catalog entries and explicitly exported local covers without modifying Playnite's database or installing game files. The bridge targets the current stable Playnite 10 SDK; live Playnite-host acceptance remains pending, and future Playnite 11 compatibility is not claimed.
+
+**Remove and exclude…** hides a game while retaining Original, snapshots, packages and installation history. Future scans skip that installation path. Restore its library entry from **Settings → Excluded games**; this changes visibility, not game files. CLI equivalents use catalog game IDs:
+
+```powershell
+.\optibackup.exe games exclude $gameId --yes
+.\optibackup.exe games excluded --json
+.\optibackup.exe games unexclude $gameId --yes
+$export = Join-Path $env:LOCALAPPDATA 'OptiScalerBackup\playnite\library.json'
+.\optibackup.exe playnite compare $export --json
+.\optibackup.exe playnite configure $export --exclude-platform (Read-Host 'Exact platform names, separated by ;') --yes
+.\optibackup.exe playnite import $export all --dry-run
+.\optibackup.exe playnite import $export all --yes
+```
+
+To import one entry, replace `all` with its exported Playnite ID, not a catalog game ID. **Compare** reports filtered, uninstalled, unavailable-path, excluded and scanned-only entries; it matches installation paths, not titles. Names such as platform labels are compared literally, ignoring case. Duplicate Playnite entries and overlapping counts can explain totals that differ from the number of catalog games. See [comparison semantics and CLI filtering](docs/playnite.md#comparison-and-import-rules).
 
 ## Game snapshots
 

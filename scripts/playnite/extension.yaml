@@ -1,0 +1,6 @@
+Id: OptiScalerBackupBridge_3f47e970-c45d-4e42-aea4-9472acdf5040
+Name: OptiScaler Backup Bridge
+Author: OptiScaler Backup contributors
+Version: 1.0.0
+Module: OptiScalerBackup.Playnite.dll
+Type: GenericPlugin

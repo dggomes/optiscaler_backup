@@ -52,6 +52,11 @@ public sealed partial class Store : IDisposable
     public void Save() => Atomic(Path.Combine(Home, "catalog.json"), Data);
     public Game Game(string id) => Data.Games.SingleOrDefault(g => g.Id == id)
         ?? throw new InvalidOperationException($"Unknown game ID: {id}");
+    public IEnumerable<Game> VisibleGames => Data.Games.Where(g => !g.Excluded);
+    public void SetExcluded(string id, bool excluded)
+    {
+        var game = Format.Clone(Game(id)); game.Excluded = excluded; Put(game);
+    }
     public void Put(Game game)
     {
         var index = Data.Games.FindIndex(g => g.Id == game.Id);
@@ -63,6 +68,17 @@ public sealed partial class Store : IDisposable
             if (index < 0) Data.Games.Remove(game); else Data.Games[index] = previous!;
             throw;
         }
+    }
+    public void PutMany(IEnumerable<Game> games)
+    {
+        var previous = Data.Games; var next = previous.ToList();
+        foreach (var game in games)
+        {
+            var index = next.FindIndex(g => g.Id == game.Id);
+            if (index < 0) next.Add(game); else next[index] = game;
+        }
+        Data.Games = next;
+        try { Save(); } catch { Data.Games = previous; throw; }
     }
     public string Blob(string hash)
     {

@@ -16,6 +16,9 @@ if (args.SequenceEqual(new[] { "--live-thumbnails" })) { await ThumbnailTests.Li
 
 var tests = new (string Name, Func<Task> Run)[]
 {
+    ("Excluded games remain hidden across scans while retaining backup history", () => Sync(LibraryIntegrationTests.Exclusions)),
+    ("Playnite imports retain IDs and covers with filtered comparison and path safety", () => Sync(LibraryIntegrationTests.PlayniteImport)),
+    ("Steam API hashed artwork repairs old misses and conservative edition matching", ThumbnailTests.HashedArtwork),
     ("Historical fingerprints identify exact renamed binaries and inventory-only versions", () => Sync(BackupInsightTests.HistoricalRecognition)),
     ("Recognition refresh preserves history and rejects malformed/future catalogs", BackupInsightTests.CatalogRefresh),
     ("Unreal settings preserve native AA, custom enums, conflicts and source provenance", () => Sync(BackupInsightTests.UnrealParsing)),

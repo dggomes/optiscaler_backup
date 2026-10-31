@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.5] — 2026-10-31
+
+### Added
+
+- Reversible library exclusions in desktop and CLI. Hidden installations stay excluded from future scans while their game files, backups, Original snapshots, packages and history are preserved; restore them from Excluded games.
+- Local Playnite SDK bridge exporting games, covers, platforms, tags and categories. Compare the export with the scanned library, filter by platform/tag/category, then import individual or all eligible installed games and their covers.
+- Playnite comparison counts distinguish matches, missing installations, uninstalled entries, filters and game exclusions without replacing existing backup history.
+
+### Changed
+
+- Resolve Steam's newer hash-based cover paths through free, keyless Steam StoreBrowse asset metadata. Prefer portrait assets, retain bounded image validation and use limited platform/edition title aliases only when a unique match exists.
+- Retry old cached thumbnail misses with the updated lookup and retry new misses daily. Isolate per-game artwork failures so one failed request does not stop the remaining catalog.
+- Remove executable-icon and implicit local Steam-cache artwork fallbacks. Library cards use cached API artwork or explicitly imported Playnite covers, with initials when no cover is available.
+
+Automated service, CLI, native desktop, compiled bridge export and updater checks gate publication. Live Playnite-host and real gaming-PC acceptance remain pending.
+
 ## [0.3.4] — 2026-10-31
 
 ### Added

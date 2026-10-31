@@ -35,20 +35,24 @@ internal sealed partial class Application
         {
             try
             {
-                var choice = Pick("OptiScaler Backup", ["Scan installed launchers", "Scan a custom folder", "Game list", "Add a game manually", "Check application updates", "Configuration"]);
+                var choice = Pick("OptiScaler Backup", ["Scan installed launchers", "Scan a custom folder", "Game list", "Add a game manually", "Check application updates", "Configuration", "Excluded games"]);
                 switch (choice)
                 {
                     case -1: return;
                     case 0: await Command("scan"); break;
                     case 1: await Command("scan", Ask("Folder to scan")); break;
                     case 2:
-                        var game = GamePicker.Select(Console.In, Console.Out, store.Data.Games);
+                        var game = GamePicker.Select(Console.In, Console.Out, store.VisibleGames.ToList());
                         if (game != null) await GameMenu(game.Id);
                         break;
                     case 3: await Command("games", "add", Ask("Game name"), Ask("Game installation folder")); break;
                     case 4:
                         await Command("update", "check");
                         if (Yes("Install available update")) await Command("update", "install"); break;
+                    case 6:
+                        var hidden = GamePicker.Select(Console.In, Console.Out, store.Data.Games.Where(g => g.Excluded).ToList());
+                        if (hidden != null && Yes("Restore to library")) await Command("games", "unexclude", hidden.Id, "--yes");
+                        break;
                     case 5:
                         await Command("config", "show");
                         var setting = Pick("Configure", ["Backup directory", "Enable/disable update checks", "ZIP expanded-size limit", "ZIP entry-count limit"]);
@@ -69,7 +73,7 @@ internal sealed partial class Application
             try
             {
                 var game = store.Game(id);
-                var choice = Pick(game.Name, ["Detect and select managed files", "List managed files", "Add a managed file", "Stop managing a file", "Create named snapshot", "Restore snapshot", "Rename snapshot", "Packages", "Select game executable", "Inspect backup components and graphics settings", "Read current graphics settings", "Refresh recognition catalog"]);
+                var choice = Pick(game.Name, ["Detect and select managed files", "List managed files", "Add a managed file", "Stop managing a file", "Create named snapshot", "Restore snapshot", "Rename snapshot", "Packages", "Select game executable", "Inspect backup components and graphics settings", "Read current graphics settings", "Refresh recognition catalog", "Remove and exclude game"]);
                 switch (choice)
                 {
                     case -1: return;
@@ -105,6 +109,9 @@ internal sealed partial class Application
                         break;
                     case 10: await Command("settings", id); break;
                     case 11: await Command("components", "refresh"); break;
+                    case 12:
+                        if (Yes("Remove and exclude game (backups and game files are retained)")) { await Command("games", "exclude", id, "--yes"); return; }
+                        break;
                 }
             }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or System.Text.Json.JsonException)

@@ -26,6 +26,10 @@ jobs:
       - name: Publish Windows executable
         if: runner.os == 'Windows'
         run: dotnet publish src/cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/win-x64
+      - name: Test compiled Playnite export bridge
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-playnite-bridge.ps1 -Assembly scripts/playnite/bin/Release/net462/OptiScalerBackup.Playnite.dll -Cli artifacts/win-x64/optibackup.exe
       - name: Download previous schema release for compatibility test
         if: runner.os == 'Windows'
         shell: bash
