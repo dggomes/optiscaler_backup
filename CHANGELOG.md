@@ -13,7 +13,7 @@
 - Give backup comparison more room for file paths by hiding hash columns until Show hashes is selected; explain empty filtered results.
 - Use a single Close action in read-only dialogs and arrange Playnite's platform/tag/category filters side by side.
 
-Final native screenshot validation of these UX changes is pending.
+Native Windows checks cover minimum-size layouts, menu rendering and dropdown accessibility selection. Manual high-DPI, screen-reader and gaming-PC acceptance remain pending.
 
 ## [0.3.5] — 2026-10-31
 
