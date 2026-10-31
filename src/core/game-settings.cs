@@ -133,7 +133,9 @@ public static class GameSettingsReader
                 "hdrdisplayoutputnits" => ("HDR luminance", Number(" nits")),
                 _ => ("", "")
             };
-            if (standard.Item1.Length > 0) return (standard.Item1, standard.Item2, confidence, Epic);
+            if (standard.Item1.Length > 0)
+                return s is "graphics" or "display" ? ("Game-specific " + key, raw, "Raw game value; game-specific mapping required", Epic)
+                    : (standard.Item1, standard.Item2, confidence, Epic);
             if (new[] { "upscaler", "upscalingmethod", "upscalingmode", "upscalingquality", "dlssmode", "dlssquality", "fsrmode", "fsrquality", "xessmode", "xessquality", "antialiasingmethod" }.Contains(k))
                 return ("Game-specific " + key, raw, "Raw game value; game-specific mapping required", Epic);
         }

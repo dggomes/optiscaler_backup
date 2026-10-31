@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.3] — 2026-10-31
 
 ### Added
 
@@ -12,7 +12,7 @@
 
 Saved preferences and component presence do not establish runtime enablement. A 100% render scale is not proof of Native AA or DLAA; game-specific numeric DLSS values remain unmapped. Inventory hashes do not reconstruct uncaptured settings bytes.
 
-These changes are not released. Windows validation and real gaming-PC acceptance testing remain pending.
+Validated on Windows and Linux: 67 Windows service tests (65 plus two Windows-only skips on Linux/macOS), CLI/menu round trips, producer archive-policy tests and native UI inspection using official FSR/OptiPatcher byte fixtures and captured Unreal settings. Native CLI and paired updater recovery checks pass. Real gaming-PC acceptance remains pending.
 
 ## [0.3.2] — 2026-10-30
 

@@ -1,6 +1,6 @@
 # Historical component recognition
 
-This feature is in development after stable **v0.3.2**. It identifies recorded component versions in backups; it does not install components, execute downloaded libraries, recommend a compatible combination or prove that a component was enabled at runtime. Backup schema 2 is unchanged. This fingerprint catalog is separate from the display-only manager compatibility pack described in [manager data format](manager-data-format.md).
+Available from **v0.3.3**. It identifies recorded component versions in backups; it does not install components, execute downloaded libraries, recommend a compatible combination or prove that a component was enabled at runtime. Backup schema 2 is unchanged. This fingerprint catalog is separate from the display-only manager compatibility pack described in [manager data format](manager-data-format.md).
 
 ## Matching and coverage
 

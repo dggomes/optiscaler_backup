@@ -20,9 +20,9 @@ Snapshot creation inventories the entire game folder (regular-file hashes, paths
 
 Any inferred target beyond the manual selection is listed on stderr and requires capture confirmation. For scripts, review `snapshots create <game-id> Original --original --confirm-clean --dry-run`, then use the same command with `--yes` instead of `--dry-run` to accept the reviewed extras. Neither flag establishes cleanliness; `--confirm-clean` remains the user's assertion.
 
-## Component and Unreal-settings reports — development
+## Component and Unreal-settings reports
 
-These commands are in development after stable v0.3.2:
+Available from v0.3.3:
 
 - `components catalog`: active catalog digest, record count and source evidence.
 - `components refresh`: fetch/validate this project's append-only recognition JSON; no component binary downloads or installation.

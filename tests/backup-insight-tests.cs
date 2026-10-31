@@ -69,6 +69,8 @@ internal static class BackupInsightTests
         Check(defaults.Observations.All(o => o.Line > 0 && o.Source.StartsWith("https://")), "Settings provenance missing.");
         var zeroScale = GameSettingsReader.Parse("[ScalabilityGroups]\nsg.ResolutionQuality=0.000000\n[SystemSettings]\nr.ScreenPercentage=0", "GameUserSettings.ini");
         Check(zeroScale.Observations.All(o => o.Value.Contains("default")), "UE default scale sentinel was displayed as a 0% render scale.");
+        var customDisplay = GameSettingsReader.Parse("[Display]\nFullscreenMode=2", "GameUserSettings.ini");
+        Check(customDisplay.Observations.Single().Value == "2" && customDisplay.Observations.Single().Confidence.Contains("mapping required"), "Generic display-section enum was mistaken for a documented Unreal base field.");
         var unrelated = GameSettingsReader.Parse("[Account]\nToken=secret\nDLSSQuality=Quality", "GameUserSettings.ini");
         Check(unrelated.Observations.Count == 0, "Unrelated account fields were exposed.");
     }

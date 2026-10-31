@@ -156,6 +156,7 @@ public partial class MainWindow : Window
         RestoreButton.IsEnabled = online && snapshot; ShowFilesButton.IsEnabled = snapshot; RenameBackupButton.IsEnabled = snapshot;
         InstallButton.IsEnabled = online && PackageList.SelectedItem != null; RenamePackageButton.IsEnabled = !busy && PackageList.SelectedItem != null;
         RollbackButton.IsEnabled = online && InstallationList.SelectedItem != null;
+        BackupInsightsButton.IsEnabled = snapshot; CurrentSettingsButton.IsEnabled = !busy && selectedId != null;
         UpdateUpdateActions();
     }
 

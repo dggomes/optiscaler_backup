@@ -69,7 +69,7 @@ Downloads are enabled by default. **Settings → Download thumbnails automatical
 
 Images are HTTPS JPEG downloads limited to 4 MiB and verified with SHA-256 in the local cache at `%LOCALAPPDATA%\OptiScalerBackup\thumbnails` (or `<home>/thumbnails` with `--home`). Steam's `library_600x900.jpg` portrait is requested first, with `header.jpg` fallback on 404. Older cached headers get a background portrait attempt without waiting for their normal 30-day refresh; existing images remain usable offline or with downloads disabled. Otherwise successful results are rechecked after 30 days and no-match results after seven days. Offline/service/rate-limit failures pause image downloads without blocking backup, restore or package operations. Changing the backup location does not move this separate cache.
 
-The released app's network use is application updates plus optional thumbnail matching/downloads; game-file backup and package operations stay local. Development builds also support fetching this project's recognition-catalog JSON under the update-check opt-out; local game names/hashes are not uploaded by that refresh. To disable thumbnail downloads from the CLI while the desktop app is closed:
+The app's network use is application updates, optional thumbnail matching/downloads and, from v0.3.3, this project's recognition-catalog JSON under the update-check opt-out. Game-file backup and package operations stay local; local game names/hashes are not uploaded by recognition refresh. To disable thumbnail downloads from the CLI while the desktop app is closed:
 
 ```powershell
 .\optibackup.exe config set download-thumbnails false
@@ -116,9 +116,9 @@ $snapshotId = Read-Host 'Snapshot ID to restore'
 
 `snapshots create --dry-run` hashes/scans the game and returns the inventory-assisted plan without creating a snapshot or copying payloads. When a normal capture includes inferred targets beyond the manual selection, the CLI lists them on stderr and asks for confirmation; omit `--yes` for that interactive review, or pass it only after reviewing the dry run.
 
-### Component versions and Unreal settings — development
+### Component versions and Unreal settings
 
-These features are being developed after stable **v0.3.2** and are not part of that published release. A bundled historical fingerprint catalog matches recorded SHA-256/size to OptiScaler, OptiPatcher and FSR versions, including renamed files. The initial catalog has 98 provenance records. Backup lists/details distinguish copied bytes from inventory-only evidence, retain ambiguous/unknown builds, and never infer runtime enablement. Identification uses captured manifest hashes; restore separately checks actual payload integrity. See [component recognition](docs/component-recognition.md) for coverage, catalog refresh and the Apache 2.0 DLSSync metadata attribution/[license](docs/licenses/dlssync-catalog-license.txt).
+Available from **v0.3.3**. A bundled historical fingerprint catalog matches recorded SHA-256/size to OptiScaler, OptiPatcher and FSR versions, including renamed files. The initial catalog has 98 provenance records. Backup lists/details distinguish copied bytes from inventory-only evidence, retain ambiguous/unknown builds, and never infer runtime enablement. Identification uses captured manifest hashes; restore separately checks actual payload integrity. See [component recognition](docs/component-recognition.md) for coverage, catalog refresh and the Apache 2.0 DLSSync metadata attribution/[license](docs/licenses/dlssync-catalog-license.txt).
 
 The read-only [Unreal settings report](docs/unreal-game-settings.md) extracts approved current INIs or verified captured INIs, with file/layer/section/key/line provenance and conflict warnings. Old backups never borrow live settings when bytes were not captured. Saved preferences do not prove effective runtime settings: 100% render scale is not DLAA, and custom numeric DLSS modes stay raw unless a primary-source rule supports them.
 
@@ -130,7 +130,7 @@ The read-only [Unreal settings report](docs/unreal-game-settings.md) extracts ap
 .\optibackup.exe settings $gameId $snapshotId
 ```
 
-In development desktop builds, **Backups** shows a **Components / versions** column; **Components / settings…** opens recorded component provenance and saved graphics observations. **Files → Current settings…** reads approved current INIs. The separate **Historical component recognition** block in Settings offers **Refresh recognition catalog**, which updates only this project's append-only JSON metadata. Automatic startup attempts follow `CheckUpdates` and a daily cooldown, including failed requests; manual refresh can retry sooner. No component binaries are installed or distributed by this recognition feature. Existing backup schema 2 and the separate manager compatibility foundation are unchanged.
+In v0.3.3 and newer, **Backups** shows a **Components / versions** column; **Components / settings…** opens recorded component provenance and saved graphics observations. **Files → Current settings…** reads approved current INIs. The separate **Historical component recognition** block in Settings offers **Refresh recognition catalog**, which updates only this project's append-only JSON metadata. Automatic startup attempts follow `CheckUpdates` and a daily cooldown, including failed requests; manual refresh can retry sooner. No component binaries are installed or distributed by this recognition feature. Existing backup schema 2 and the separate manager compatibility foundation are unchanged.
 
 ## ZIP packages
 

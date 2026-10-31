@@ -16,6 +16,6 @@ A missing snapshot entry is unknown; only an explicit absent file state authoriz
 
 Compatibility pack format 1 and its independent `data-v` tags do not migrate or modify schema 2 backup storage.
 
-Fingerprint catalog format 1 is a different metadata document, with a project HTTPS refresh/cache and Apache 2.0 DLSSync-derived metadata attribution. Recognition/settings are development features after stable v0.3.2; backup schema 2 stays unchanged. Inventory-only hashes cannot reconstruct uncaptured component/config bytes, and historical settings never fall back to live files.
+Fingerprint catalog format 1 is a different metadata document, with a project HTTPS refresh/cache and Apache 2.0 DLSSync-derived metadata attribution. Recognition/settings are available from v0.3.3; backup schema 2 stays unchanged. Inventory-only hashes cannot reconstruct uncaptured component/config bytes, and historical settings never fall back to live files.
 
 If session acquisition fails, resolve the reported holder or data-folder access problem. Never delete `session.lock` while another app/updater is using the data home; an unlocked stale marker needs no manual deletion. Linked lock paths are rejected. See [session ownership](../../docs/storage-format.md#session-ownership-and-stale-markers).

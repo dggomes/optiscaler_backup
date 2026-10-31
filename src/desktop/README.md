@@ -62,9 +62,9 @@ Game pages hide the global app masthead in favor of a compact title, library bre
 
 Inventory capture and file mutations run off the UI thread, with mutations serialized. Active file work temporarily disables competing actions and prevents closing the window; background library scans remain separate and defer their merge when needed. Dialog values are captured on the UI thread before worker tasks use them, avoiding cross-thread dialog access. Errors are shown inline and can be dismissed. Startup recovery runs before normal work.
 
-## Component recognition and saved settings — development
+## Component recognition and saved settings
 
-The following source features are in development after stable v0.3.2. **Backups** automatically identifies recorded OptiScaler/OptiPatcher/FSR versions in a **Components / versions** column. **Components / settings…** shows all matching provenance records, unknown/custom builds and **Saved bytes** versus **Inventory only** coverage. Matches use captured hashes/lengths, including renamed files; they do not reverify stored payloads or establish runtime enablement. Restore performs its own integrity checks. See [component recognition](../../docs/component-recognition.md).
+Available from v0.3.3. **Backups** automatically identifies recorded OptiScaler/OptiPatcher/FSR versions in a **Components / versions** column. **Components / settings…** shows all matching provenance records, unknown/custom builds and **Saved bytes** versus **Inventory only** coverage. Matches use captured hashes/lengths, including renamed files; they do not reverify stored payloads or establish runtime enablement. Restore performs its own integrity checks. See [component recognition](../../docs/component-recognition.md).
 
 The dialog's **Graphics settings** tab reads verified captured Unreal INIs and shows interpreted/raw values, file/line/layer, section/key and confidence/source URL, with full tooltips and conflict warnings. It never substitutes current game settings for uncaptured historical bytes. Resolution/last-confirmed values remain separate; 100% scale is not classified as DLAA. **Files → Current settings…** and CLI `settings <game-id>` read approved current INIs instead. See [Unreal interpretation rules](../../docs/unreal-game-settings.md).
 
