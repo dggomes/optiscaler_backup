@@ -1,10 +1,22 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace OptiScalerBackup.Desktop;
 
 public partial class MainWindow
 {
+    private void GameContextMenu_Opening(object sender, ContextMenuEventArgs e)
+    {
+        var row = e.CursorLeft >= 0 && Mouse.DirectlyOver is DependencyObject element
+            && ItemsControl.ContainerFromElement(GameList, element) is ListBoxItem item ? item.Content as GameRow : GameList.SelectedItem as GameRow;
+        e.Handled = true;
+        if (row == null || busy) return;
+        GameList.SelectedItem = row;
+        var menu = new ContextMenu { PlacementTarget = GameList };
+        var remove = new MenuItem { Header = "Remove and exclude…", Tag = row.Id };
+        remove.Click += ExcludeGame_Click; menu.Items.Add(remove); menu.IsOpen = true;
+    }
     private async void ExcludeGame_Click(object sender, RoutedEventArgs e) => await Guard("Exclude game", async () =>
     {
         var id = (sender as MenuItem)?.Tag as string ?? selectedId ?? throw new InvalidOperationException("Select a game.");

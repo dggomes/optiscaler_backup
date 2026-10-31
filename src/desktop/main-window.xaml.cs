@@ -158,6 +158,7 @@ public partial class MainWindow : Window
         RestoreButton.IsEnabled = online && snapshot; ShowFilesButton.IsEnabled = snapshot; RenameBackupButton.IsEnabled = snapshot;
         InstallButton.IsEnabled = online && PackageList.SelectedItem != null; RenamePackageButton.IsEnabled = !busy && PackageList.SelectedItem != null;
         RollbackButton.IsEnabled = online && InstallationList.SelectedItem != null;
+        CompareBackupsButton.IsEnabled = !busy && selectedId != null && Selected.Snapshots.Count >= 2;
         BackupInsightsButton.IsEnabled = snapshot; CurrentSettingsButton.IsEnabled = !busy && selectedId != null;
         RemoveGameButton.IsEnabled = !busy && selectedId != null;
         UpdateUpdateActions();
@@ -376,6 +377,8 @@ public partial class MainWindow : Window
         page = Page.Library; Refresh(); SearchBox.Text = "__no_matching_game__";
         if (selectedId != selected) throw new InvalidOperationException("Library search discarded the current game.");
         SearchBox.Clear();
+        var backupComparison = new BackupComparisonDialog(this, store, Format.Clone(Selected), (SnapshotList.SelectedItem as SnapshotRow)?.Id);
+        await backupComparison.Prepare(); await RenderDialog(backupComparison, screenshot + ".compare.png");
         var comparisonLibrary = new PlayniteLibrary { ExportedUtc = DateTimeOffset.UtcNow, Games = store.VisibleGames.Take(2).Select(g => new PlayniteGame { Id = Guid.NewGuid().ToString(), Name = g.Name, InstallDirectory = g.Directory, Installed = true, Platforms = ["PC"], Tags = ["Windows UI test"] }).ToList() };
         await RenderDialog(new PlayniteDialog(this, comparisonLibrary, store, Format.Clone(store.Data.Settings)), screenshot + ".playnite.png");
         if (store.Data.Games.Any(g => g.Excluded) && ExcludedGamesList.Items.Count == 0) throw new InvalidOperationException("Excluded games were not available in Settings.");

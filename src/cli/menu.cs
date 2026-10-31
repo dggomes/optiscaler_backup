@@ -73,7 +73,7 @@ internal sealed partial class Application
             try
             {
                 var game = store.Game(id);
-                var choice = Pick(game.Name, ["Detect and select managed files", "List managed files", "Add a managed file", "Stop managing a file", "Create named snapshot", "Restore snapshot", "Rename snapshot", "Packages", "Select game executable", "Inspect backup components and graphics settings", "Read current graphics settings", "Refresh recognition catalog", "Remove and exclude game"]);
+                var choice = Pick(game.Name, ["Detect and select managed files", "List managed files", "Add a managed file", "Stop managing a file", "Create named snapshot", "Restore snapshot", "Rename snapshot", "Packages", "Select game executable", "Inspect backup components and graphics settings", "Read current graphics settings", "Refresh recognition catalog", "Remove and exclude game", "Compare backups"]);
                 switch (choice)
                 {
                     case -1: return;
@@ -109,6 +109,12 @@ internal sealed partial class Application
                         break;
                     case 10: await Command("settings", id); break;
                     case 11: await Command("components", "refresh"); break;
+                    case 13:
+                        var first = Pick("Compare from backup", game.Snapshots.Select(s => s.Name).ToList());
+                        if (first < 0) break;
+                        var second = Pick("Compare to backup", game.Snapshots.Select(s => s.Name).ToList());
+                        if (second >= 0) await Command("snapshots", "compare", id, game.Snapshots[first].Id, game.Snapshots[second].Id);
+                        break;
                     case 12:
                         if (Yes("Remove and exclude game (backups and game files are retained)")) { await Command("games", "exclude", id, "--yes"); return; }
                         break;

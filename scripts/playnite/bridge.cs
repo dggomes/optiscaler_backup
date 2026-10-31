@@ -36,6 +36,15 @@ namespace OptiScalerBackup.PlayniteBridge
         {
             if (games.Count > 50000) throw new IOException("Playnite export exceeds 50,000 games.");
             NoLinks(folder); Directory.CreateDirectory(Path.Combine(folder, "covers"));
+            var serializer = new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024, RecursionLimit = 32 };
+            var existing = Path.Combine(folder, "library.json"); NoLinks(existing);
+            if (File.Exists(existing))
+            {
+                if (new FileInfo(existing).Length > 32 * 1024 * 1024) throw new IOException("Existing export exceeds the supported limit; preserved.");
+                var previous = serializer.DeserializeObject(File.ReadAllText(existing)) as Dictionary<string, object>;
+                if (previous == null || !previous.TryGetValue("Version", out var format) || !(format is int version) || version != 1)
+                    throw new IOException("Unsupported existing Playnite export; preserved without replacement.");
+            }
             var warnings = new List<string>();
             foreach (var game in games)
             {
@@ -56,7 +65,6 @@ namespace OptiScalerBackup.PlayniteBridge
                 catch (Exception error) when (error is IOException || error is UnauthorizedAccessException || error is ArgumentException)
                 { warnings.Add(game.Name + " cover: " + error.Message); }
             }
-            var serializer = new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024, RecursionLimit = 32 };
             var json = serializer.Serialize(new { Version = 1, ExportedUtc = DateTimeOffset.UtcNow.ToString("o"), Games = games, Warnings = warnings });
             if (Encoding.UTF8.GetByteCount(json) > 32 * 1024 * 1024) throw new IOException("Playnite export exceeds 32 MiB.");
             var target = Path.Combine(folder, "library.json"); NoLinks(target); var temporary = Path.Combine(folder, Guid.NewGuid().ToString("N") + ".tmp");

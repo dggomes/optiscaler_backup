@@ -22,4 +22,8 @@ $report = & $Cli --home (Join-Path $root 'app') playnite compare (Join-Path $exp
 if ($LASTEXITCODE -ne 0) { throw 'App could not compare the actual compiled bridge export' }
 $comparison = $report | ConvertFrom-Json
 if ($comparison.Comparison.PlayniteTotal -ne 1 -or $comparison.Comparison.MissingInstalled -ne 1) { throw 'Bridge/app comparison counts disagree' }
+[IO.File]::WriteAllText((Join-Path $export 'library.json'), '{"Version":99}')
+$rejected = $false
+try { [OptiScalerBackup.PlayniteBridge.ExportWriter]::Write($export, $games) } catch { $rejected = $true }
+if (-not $rejected -or (Get-Content (Join-Path $export 'library.json') -Raw) -ne '{"Version":99}') { throw 'Future export was overwritten' }
 Write-Host 'PASS compiled Playnite bridge export/replace, cover copy, metadata privacy and CLI comparison interoperability'

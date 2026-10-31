@@ -5,6 +5,7 @@ UI-independent .NET 10 services for game snapshots, reviewed ZIP packages and re
 - `Store`: catalog persistence, exclusive session locking and verified content-addressed payloads.
 - `SessionLock`: OS-enforced ownership, a brief closing-session retry, stale-marker reset after acquisition and delete-on-close. Read-only stale markers are repaired only after exclusive access by clearing that marker's `ReadOnly` bit; active handles, ACLs and game/catalog permissions are never bypassed or changed.
 - `Engine`: capture/preview/restore, package install/rollback, overlap ordering and transaction recovery.
+- `BackupComparer` (v0.3.5): directional snapshot comparison using recorded hashes/sizes and verified inventory metadata, with saved-byte versus inventory-only coverage and explicit unknown states. It reads neither live game files nor saved payload bytes; see [comparison semantics](../../docs/storage-format.md#backup-comparison).
 - `Packages`: bounded ZIP inspection, destination suggestions and reviewed imports with retained mappings/exclusions.
 - `SafePaths`: Windows-safe destinations, explicit approved roots, link rejection and free-space checks.
 - `Releases`: stable GitHub release selection and verified downloads; executable replacement belongs to the Windows layer.
@@ -12,7 +13,7 @@ UI-independent .NET 10 services for game snapshots, reviewed ZIP packages and re
 - `GameSettingsReader`: read-only Unreal-style INI observations from managed approved current files or verified captured payloads, retaining provenance/conflicts instead of guessing runtime activation. See [Unreal settings](../../docs/unreal-game-settings.md).
 - `CompatibilityPacks` / `UpstreamSources` / manager contracts: immutable display-only compatibility data, reviewed source provenance and future analysis/component/file-plan types. See [manager data format](../../docs/manager-data-format.md); this foundation has no network monitoring, activation, executor or CLI/UI integration.
 
-A missing snapshot entry is unknown; only an explicit absent file state authorizes removal. Game and external roots must be available before resolving targets. Callers supply process checks and confirmations; services enforce data/path integrity and package rollback rules. See [storage format](../../docs/storage-format.md).
+A missing snapshot entry alone is unknown. Original cleanup can additionally use verified inventory evidence to remove later-tracked additions proven absent; it cannot restore unselected original bytes. Game and external roots must be available before resolving targets. Callers supply process checks and confirmations; services enforce data/path integrity and package rollback rules. See [storage format](../../docs/storage-format.md).
 
 Compatibility pack format 1 and its independent `data-v` tags do not migrate or modify schema 2 backup storage.
 

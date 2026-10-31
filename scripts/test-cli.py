@@ -200,5 +200,9 @@ with tempfile.TemporaryDirectory(prefix='cli-', dir=base) as temporary:
     assert len(json.loads(run('playnite', 'import', str(export), 'all', '--dry-run').stdout)) == 1
     imported = json.loads(run('playnite', 'import', str(export), playnite_id, '--yes').stdout)
     assert not imported['Warnings']
+    comparison_snapshot = json.loads(run('snapshots', 'create', graphics_id, 'Comparison version', '--yes').stdout)
+    backup_diff = json.loads(run('snapshots', 'compare', graphics_id, graphics_snapshot['Id'], comparison_snapshot['Id']).stdout)
+    assert backup_diff['Changed'] >= 2 and backup_diff['BeforeId'] == graphics_snapshot['Id']
+    assert any(row['Target']['Path'] == 'OptiScaler.ini' and row['Change'] == 'Changed' for row in backup_diff['Files'])
     assert playnite_id in json.loads(run('games', 'show', graphics_id).stdout)['PlayniteIds']
 print('PASS CLI end-to-end: backups, packages, game search, automatic bulk selection, extras, cancellation and validation')

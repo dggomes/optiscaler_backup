@@ -107,6 +107,7 @@ internal sealed partial class Application(Store store, Engine engine)
           optibackup components identify <game-id> <snapshot-id>
           optibackup settings <game-id> [snapshot-id]
           optibackup snapshots list <game-id>
+          optibackup snapshots compare <game-id> <before-id> <after-id>
           optibackup snapshots create <game-id> <name> [--original --confirm-clean] [--dry-run]
           optibackup snapshots rename <game-id> <snapshot-id> <name>
           optibackup restore <game-id> <snapshot-id> [--dry-run] [--yes]
@@ -246,6 +247,7 @@ internal sealed partial class Application(Store store, Engine engine)
         switch (args.At(1))
         {
             case "list": args.Count(3, 3); Output(game.Snapshots.Select(SnapshotOutput), args); break;
+            case "compare": args.Count(5, 5); Output(BackupComparer.Compare(store, game, args.At(3), args.At(4)), args); break;
             case "create":
                 args.Count(4, 4);
                 if (args.Has("original")) Console.Error.WriteLine("Original records current files. Confirm clean only if you know they are unmodified.");

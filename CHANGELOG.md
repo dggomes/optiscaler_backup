@@ -7,6 +7,8 @@
 - Reversible library exclusions in desktop and CLI. Hidden installations stay excluded from future scans while their game files, backups, Original snapshots, packages and history are preserved; restore them from Excluded games.
 - Local Playnite SDK bridge exporting games, covers, platforms, tags and categories. Compare the export with the scanned library, filter by platform/tag/category, then import individual or all eligible installed games and their covers.
 - Playnite comparison counts distinguish matches, missing installations, uninstalled entries, filters and game exclusions without replacing existing backup history.
+- Compare two recorded backup versions in desktop or with `snapshots compare`. Reports show Added, Removed, Changed, Unchanged and Unknown coverage states, before/after SHA-256 hashes, sizes and capture coverage.
+- Desktop comparison includes change filters, path search and a swap action for reversing the comparison direction.
 
 ### Changed
 
@@ -14,7 +16,9 @@
 - Retry old cached thumbnail misses with the updated lookup and retry new misses daily. Isolate per-game artwork failures so one failed request does not stop the remaining catalog.
 - Remove executable-icon and implicit local Steam-cache artwork fallbacks. Library cards use cached API artwork or explicitly imported Playnite covers, with initials when no cover is available.
 
-Automated service, CLI, native desktop, compiled bridge export and updater checks gate publication. Live Playnite-host and real gaming-PC acceptance remain pending.
+Backup comparison uses recorded file states and inventories without reading live game files. Coverage labels describe what was captured, not payload-integrity verification. Missing legacy/external metadata and excluded-link paths remain unknown rather than being reported as deletions.
+
+Backup-comparison unit and native UI validation are in progress. Automated service, CLI, native desktop, compiled bridge export and updater checks gate publication. Live Playnite-host and real gaming-PC acceptance remain pending.
 
 ## [0.3.4] — 2026-10-31
 
