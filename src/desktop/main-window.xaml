@@ -28,7 +28,7 @@
                 <StackPanel><TextBlock x:Name="PageTitle" Text="Game library" FontFamily="{DynamicResource DisplayFont}" FontSize="24" FontWeight="SemiBold"/><TextBlock x:Name="PageDescription" FontSize="12" Text="Choose a game to manage backups and packages." Style="{StaticResource MutedText}" Margin="0,4,0,0"/></StackPanel>
                 <StackPanel x:Name="TopActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="ScanButton" Content="Scan games" Style="{StaticResource Primary}" Click="Scan_Click" ToolTip="Find installed games from supported launchers (F5)"/>
-                    <Button Content="Add game" Click="AddGame_Click"/><Button Content="Playnite…" Style="{StaticResource Quiet}" Click="Playnite_Click"/><Button Content="&#xE712;" Style="{StaticResource IconButton}" Click="LibraryOptions_Click" ToolTip="More library actions" AutomationProperties.Name="More library actions" Margin="0"/>
+                    <Button Content="Add game" Click="AddGame_Click"/><Button Content="Playnite…" Style="{StaticResource Quiet}" Click="Playnite_Click"/><Button x:Name="LibraryOptionsButton" Content="&#xE712;" Style="{StaticResource IconButton}" Click="LibraryOptions_Click" ToolTip="More library actions" AutomationProperties.Name="More library actions" Margin="0"/>
                 </StackPanel>
             </Grid>
             <StackPanel Grid.Row="1">
@@ -44,11 +44,11 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="310"/></Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="{DynamicResource Surface}" CornerRadius="8" Padding="3" BorderThickness="1" BorderBrush="{DynamicResource Line}" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <RadioButton x:Name="FilterAll" Style="{StaticResource Filter}" Content="All games" GroupName="Filter" Tag="all" IsChecked="True" Click="Filter_Click"/>
                             <RadioButton x:Name="FilterProtected" Style="{StaticResource Filter}" Content="With backups" GroupName="Filter" Tag="protected" Click="Filter_Click"/>
                             <RadioButton x:Name="FilterUnprotected" Style="{StaticResource Filter}" Content="No backups" GroupName="Filter" Tag="unprotected" Click="Filter_Click"/>
-                        </StackPanel>
+                        </StackPanel></Border>
                         <Grid Grid.Column="1" VerticalAlignment="Top" Margin="0,1,0,0">
                             <TextBox x:Name="SearchBox" TextChanged="Search_Changed" Padding="34,7,34,7" AutomationProperties.Name="Search games" ToolTip="Search names across the entire library (Ctrl+F)"/>
                             <TextBlock FontFamily="{DynamicResource IconFont}" Text="&#xE721;" Foreground="{DynamicResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>

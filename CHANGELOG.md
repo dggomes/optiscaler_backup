@@ -8,10 +8,12 @@
 - Preserve 112 × 168 portrait covers while adding backup/Original/offline badges, two-line game titles and fuller tooltips.
 - Group game-folder access and reversible exclusion under Game options; label backup component/settings details as Inspect.
 - Refine the dark theme, typography, dropdowns, keyboard focus and hover states, and balance the Settings panels.
+- Polish native WPF controls with segmented filters, rounded dropdown popups and selected-item checkmarks, softer text fields/buttons, and rounded menus/tooltips.
+- Add focus halos that keep control sizes stable, retaining WPF interaction semantics and Windows file/folder pickers.
 - Give backup comparison more room for file paths by hiding hash columns until Show hashes is selected; explain empty filtered results.
 - Use a single Close action in read-only dialogs and arrange Playnite's platform/tag/category filters side by side.
 
-Native screenshot review of these UX changes is in progress.
+Final native screenshot validation of these UX changes is pending.
 
 ## [0.3.5] — 2026-10-31
 

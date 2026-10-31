@@ -104,21 +104,29 @@ internal sealed class BackupComparisonDialog : ReviewDialog
             }).ToList();
         empty.Visibility = table.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
+    internal FrameworkElement ShowFilterMenu()
+    {
+        filter.IsDropDownOpen = true; filter.UpdateLayout();
+        return (filter.Template.FindName("PART_Popup", filter) as System.Windows.Controls.Primitives.Popup)?.Child as FrameworkElement
+            ?? throw new IOException("Change filter popup is unavailable.");
+    }
+    internal void HideFilterMenu() => filter.IsDropDownOpen = false;
     protected override void Approve() { }
     internal override void CheckInteraction()
     {
         if (report == null) throw new IOException("Backup comparison failed: " + Error.Text);
         filter.ApplyTemplate();
-        var comboPeer = new System.Windows.Automation.Peers.ComboBoxAutomationPeer(filter);
+        var comboPeer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(filter) ?? throw new IOException("Change filter has no accessibility peer.");
         var dropdown = (System.Windows.Automation.Provider.IExpandCollapseProvider)comboPeer.GetPattern(System.Windows.Automation.Peers.PatternInterface.ExpandCollapse);
         dropdown.Expand(); filter.UpdateLayout();
         ((filter.Template.FindName("PART_Popup", filter) as System.Windows.Controls.Primitives.Popup)?.Child as FrameworkElement)?.UpdateLayout();
-        var changed = (ComboBoxItem?)filter.ItemContainerGenerator.ContainerFromItem("Changed") ?? throw new IOException("Change filter dropdown did not generate selectable items.");
-        var itemPeer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(changed) ?? throw new IOException("Change filter item has no accessibility peer.");
-        ((System.Windows.Automation.Provider.ISelectionItemProvider)itemPeer.GetPattern(System.Windows.Automation.Peers.PatternInterface.SelectionItem)).Select();
+        var itemPeer = comboPeer.GetChildren().Single(peer => peer.GetName() == "Changed");
+        var selection = itemPeer.GetPattern(System.Windows.Automation.Peers.PatternInterface.SelectionItem) as System.Windows.Automation.Provider.ISelectionItemProvider
+            ?? throw new IOException("Change filter item has no accessibility selection provider.");
+        selection.Select();
         dropdown.Collapse();
         if (filter.SelectedItem as string != "Changed" || table.Items.Count != report.Changed) throw new IOException("Changed-file comparison filter failed.");
         search.Text = "no-such-path-" + Guid.NewGuid(); if (table.Items.Count != 0 || empty.Visibility != Visibility.Visible) throw new IOException("Comparison path search failed.");
-        search.Clear(); filter.SelectedItem = "Changes";
+        search.Clear(); filter.SelectedItem = "Changes"; search.Focus();
     }
 }

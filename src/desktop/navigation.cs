@@ -9,6 +9,7 @@ namespace OptiScalerBackup.Desktop;
 
 public partial class MainWindow
 {
+    private ContextMenu? optionsMenu;
     private void SetWorkspaceEnabled(bool enabled)
     {
         Workspace.IsEnabled = enabled; TopActions.IsEnabled = enabled; Navigation.IsEnabled = enabled; UpdateNotice.IsEnabled = enabled;
@@ -46,7 +47,7 @@ public partial class MainWindow
     private void LibraryOptions_Click(object sender, RoutedEventArgs e)
     {
         if (busy) return;
-        var menu = new ContextMenu { PlacementTarget = (Button)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        var menu = optionsMenu = new ContextMenu { PlacementTarget = (Button)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
         var scan = new MenuItem { Header = "Scan a folder…" }; scan.Click += ScanOptions_Click;
         var settings = new MenuItem { Header = "Library settings / excluded games" }; settings.Click += Settings_Click;
         menu.Items.Add(scan); menu.Items.Add(settings); menu.IsOpen = true;
@@ -54,7 +55,7 @@ public partial class MainWindow
     private void GameOptions_Click(object sender, RoutedEventArgs e)
     {
         if (busy || selectedId == null) return;
-        var menu = new ContextMenu { PlacementTarget = (Button)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        var menu = optionsMenu = new ContextMenu { PlacementTarget = (Button)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
         var folder = new MenuItem { Header = "Open game folder", IsEnabled = Directory.Exists(Selected.Directory) };
         folder.Click += async (_, _) => await Guard("Open game folder", () =>
         { Process.Start(new ProcessStartInfo(Selected.Directory) { UseShellExecute = true }); return Task.CompletedTask; });

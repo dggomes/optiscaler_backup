@@ -78,7 +78,7 @@ internal sealed class PlayniteDialog : ReviewDialog
         var actions = new WrapPanel(); var all = new Button { Content = "Select all eligible" }; var clear = new Button { Content = "Clear selection" };
         all.Click += (_, _) => { foreach (var row in rows) row.Include = row.Row.Eligible; table.Items.Refresh(); };
         clear.Click += (_, _) => { foreach (var row in rows) row.Include = false; table.Items.Refresh(); };
-        actions.Children.Add(all); actions.Children.Add(clear); header.Children.Add(actions); Body.Children.Add(header);
+        actions.Children.Add(all); actions.Children.Add(clear); actions.Children.Add(new TextBlock { Text = "Separate exact names with ;. Changing filters clears selection.", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0), FontSize = 12 }); header.Children.Add(actions); Body.Children.Add(header);
         Grid.SetRow(summary, 1); Body.Children.Add(summary); Grid.SetRow(table, 2); Body.Children.Add(table);
         table.Columns.Add(IncludeColumn("Name")); table.Columns.Add(Column("Game", "Name", 230)); table.Columns.Add(Column("Comparison", "Status", 155));
         table.Columns.Add(Column("Platforms", "Platforms", 140)); table.Columns.Add(Column("Tags", "Tags", -1)); table.Columns.Add(Column("Categories", "Categories", -1));

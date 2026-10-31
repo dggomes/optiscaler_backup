@@ -270,6 +270,8 @@ public partial class MainWindow : Window
             if (CachedThumbnail(store.Game(row.Id)) != null && row.Artwork == null) throw new InvalidOperationException("Cached thumbnail did not render.");
         if (GameList.Items.Count != Math.Min(count, PageSize)) throw new InvalidOperationException("Clearing search failed.");
         await Capture(screenshot);
+        LibraryOptions_Click(LibraryOptionsButton, new RoutedEventArgs());
+        await CaptureMenu(screenshot + ".library-menu.png");
         if ((count > 0 ? GameList.ActualHeight : EmptyState.ActualHeight) < 460) throw new InvalidOperationException("Library header leaves too little room for game cards.");
         if (count >= 7) CheckLibraryDensity();
         if (count == 0) return;
@@ -295,6 +297,8 @@ public partial class MainWindow : Window
             if ((SnapshotList.SelectedItem as SnapshotRow)?.Id != id || !RestoreButton.IsEnabled) throw new InvalidOperationException("Refresh lost selection.");
         }
         await Capture(screenshot + ".game.png");
+        GameOptions_Click(RemoveGameButton, new RoutedEventArgs());
+        await CaptureMenu(screenshot + ".game-menu.png");
         CheckTabs();
         GameTabs.SelectedIndex = 1; await Capture(screenshot + ".managed.png");
         if (gameFileCount() >= 54)
@@ -436,6 +440,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task CaptureMenu(string file)
+    {
+        var menu = optionsMenu ?? throw new InvalidOperationException("Options menu did not open.");
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        menu.UpdateLayout();
+        if (!menu.IsOpen || menu.ActualWidth < 120 || menu.ActualHeight < 60) throw new InvalidOperationException("Options menu is clipped or unavailable.");
+        SaveImage(menu, file); menu.IsOpen = false;
+    }
+
     private async Task Capture(string file)
     {
         await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
@@ -452,6 +465,12 @@ public partial class MainWindow : Window
         await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
         dialog.UpdateLayout();
         SaveImage((FrameworkElement)dialog.Content, file);
+        if (dialog is BackupComparisonDialog comparison)
+        {
+            var popup = comparison.ShowFilterMenu();
+            await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            popup.UpdateLayout(); SaveImage(popup, file + ".dropdown.png"); comparison.HideFilterMenu();
+        }
         dialog.Close();
     }
 
