@@ -13,6 +13,8 @@ Download either interface from this repository's [GitHub Releases](https://githu
 
 Each is a self-contained executable with the .NET runtime included and an accompanying `.exe.sha256` checksum. Place it in a writable folder outside your game directories. Both interfaces are included from v0.2.0 onward.
 
+From **v0.4.1**, both Windows executables share a lime/navy layered-backup/checkmark icon. Explorer and shortcuts use the embedded icon; the desktop also uses it for its navigation rail and windows/dialogs. Console hosts control their own tab/window icons. Backup storage is unchanged. Windows CI verifies the embedded and desktop window icons.
+
 Keep the CLI and desktop executables in the same folder if you want either interface to update both together. Supported names are `optibackup.exe` / `optibackup-win-x64.exe` and `optibackup-ui.exe` / `optibackup-ui-win-x64.exe`. Updates include only recognized executables already present there; missing components and copies in other folders are not installed or updated.
 
 Version 0.3.2 fixes startup with leftover session-lock markers and improves active-owner diagnostics. It retains the compact portrait library and shared CLI/desktop updater; backup schema 2 and thumbnail-cache schema 1 are unchanged. Manager compatibility contracts remain an internal foundation, with no compatibility UI or automatic manager installation feature.

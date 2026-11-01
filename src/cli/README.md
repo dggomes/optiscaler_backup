@@ -6,6 +6,8 @@ Executable entrypoint and user interaction for OptiScaler Backup. No backup or p
 - `Application.Run`: scriptable commands, structured output, operation previews and explicit confirmations.
 - `Application.Menu`: game navigation, managed-file selection, snapshot actions and reviewed ZIP mappings.
 
+From **v0.4.1**, Windows executables embed the [shared lime/navy layered-backup/checkmark icon](../windows/assets/README.md), with nine ICO sizes for Explorer and shortcuts. Windows Terminal and other console hosts own their tab/window icons; the CLI does not customize those. Windows CI checks the embedded executable icons.
+
 Running without arguments opens menus when input is interactive; explicit `menu` also supports piped input. `help` lists commands. Piped menu sessions and other scripted commands skip startup update checks.
 
 Session-lock errors report the data home and, on Windows when discoverable, the active holder's name/PID. Startup retries a closing session briefly, resets unlocked stale metadata only after exclusive access, and removes its marker on close. Stale read-only markers need no manual deletion; only their `ReadOnly` attribute is cleared under exclusive access. Active legacy handles are never bypassed. Close the owner normally or wait for its updater; do not delete an active lock. Other access/ACL errors require fixing the reported data-folder access. `--version` preserves four-component hotfix versions such as `0.3.0.1`.

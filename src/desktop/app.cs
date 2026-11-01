@@ -115,7 +115,10 @@ public sealed class App : Application
             ShowInTaskbar = false,
             Content = new System.Windows.Controls.Button { Content = "Update check", Style = (Style)app.FindResource("Primary") }
         };
-        probe.Show(); probe.UpdateLayout(); probe.Close(); app.Shutdown();
+        WindowChrome.Apply(probe);
+        probe.Show(); probe.UpdateLayout();
+        if (probe.Icon == null || probe.Icon.Width <= 0) throw new InvalidOperationException("Application icon failed to load.");
+        probe.Close(); app.Shutdown();
     }
 
 }

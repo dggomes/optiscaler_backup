@@ -9,6 +9,7 @@ internal static class WindowChrome
 {
     public static void Apply(Window window)
     {
+        window.SetResourceReference(Window.IconProperty, "ApplicationIcon");
         window.SourceInitialized += (_, _) =>
         {
             var enabled = 1;

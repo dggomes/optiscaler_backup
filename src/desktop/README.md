@@ -6,6 +6,8 @@ Version 0.3.2 recovers stale session markers automatically after exclusive acqui
 
 Version 0.3.1 uses a compact portrait library and guided game workflows, informed by [OptiClick’s published game-first interface](https://github.com/onehoon/OptiClick), plus shared CLI/desktop self-updates. Backup schema 2 and thumbnail-cache schema 1 remain unchanged; this release does not add another storage migration.
 
+From **v0.4.1**, the desktop shares the lime/navy layered-backup/checkmark icon with the CLI. The desktop uses the same identity in its navigation rail, startup/main/review windows, title bar and taskbar. Native checks verify the embedded executable and shared WPF icons. Existing v0.4.0 design/hover features retain their original release availability.
+
 ## Build and run
 
 Download the self-contained `optibackup-ui-win-x64.exe` and its `.exe.sha256` checksum from [GitHub Releases](https://github.com/dggomes/optiscaler_backup/releases), available from v0.2.0. Run the executable on Windows; no .NET SDK/runtime installation is required for release builds.
@@ -109,6 +111,10 @@ Older cached headers receive a background portrait attempt even when still withi
 The shared updater downloads the installed same-folder components from one release and checks each checksum independently. Close the companion interface before installation. Pending game/rename recovery or unwritable destinations block updating. Previous executables are retained as `.previous`; every updated component is health-checked, including desktop WPF runtime/theme loading. Failure or interrupted replacement restores the entire group. The initiating interface restarts using the same data home. Published Windows builds can self-install; development builds can check releases only.
 
 First opening a schema 1 catalog converts existing snapshots to schema 2 folders, retaining `catalog.v1.json` and old blobs. Allow extra disk space for full copies. Schema 2 is not readable by v0.1.x. See [storage and recovery](../../docs/storage-format.md) before moving or restoring the data home.
+
+## Shared icon assets
+
+The [shared SVG/PNG/ICO assets](../windows/assets/README.md) include ICO frames at 16, 20, 24, 32, 40, 48, 64, 128 and 256 pixels. Both executable projects embed the ICO; `WindowChrome` applies the WPF resource to windows/dialogs, and the navigation rail uses the PNG. `python3 scripts/generate-icons.py --check` verifies decoded pixels using only the Python standard library, tolerating compression differences across zlib versions. The Windows desktop gate invokes `scripts/test-app-icons.ps1` to extract and compare published executable icons; the desktop health probe also loads the WPF icon resource. These checks are part of the Windows CI and release gates.
 
 ## Boundaries
 

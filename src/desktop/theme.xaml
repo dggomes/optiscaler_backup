@@ -1,4 +1,5 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ImageSource x:Key="ApplicationIcon">pack://application:,,,/optibackup-ui;component/assets/optibackup.ico</ImageSource>
     <SolidColorBrush x:Key="Canvas" Color="#131722"/>
     <SolidColorBrush x:Key="Rail" Color="#181D2B"/>
     <SolidColorBrush x:Key="Surface" Color="#1C2231"/>

@@ -265,6 +265,7 @@ public partial class MainWindow : Window
 
     public async Task SmokeTest(string screenshot)
     {
+        if (Icon is not BitmapFrame { Decoder: IconBitmapDecoder decoder } || decoder.Frames.Count != 9 || AppBrand.Source == null || AppBrand.Source.Width <= 0) throw new InvalidOperationException("Application/window/navigation icons are missing.");
         var count = store.VisibleGames.Count();
         int gameFileCount() => Selected.Managed.Count;
         SearchBox.Text = "__no_matching_game__";
@@ -485,6 +486,7 @@ public partial class MainWindow : Window
         dialog.Show();
         await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
         dialog.UpdateLayout();
+        if (dialog.Icon == null || dialog.Icon.Width <= 0) throw new InvalidOperationException("Dialog application icon failed to load.");
         if (dialog is ReviewDialog review) review.CheckInteraction();
         if (dialog is NameDialog name) name.ValidateLayout();
         await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);

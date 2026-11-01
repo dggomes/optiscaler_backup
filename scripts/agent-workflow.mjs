@@ -39,6 +39,7 @@ try {
     case 'migrations': console.log('No database migrations in this application.'); break;
     case 'check':
       security();
+      run('python3', ['scripts/generate-icons.py', '--check']);
       run('dotnet', ['build', 'optiscaler-backup.sln', '-c', 'Release']);
       run('dotnet', ['build', 'scripts/playnite/optiscaler-playnite.csproj', '-c', 'Release']);
       run('dotnet', ['run', '--project', 'tests', '-c', 'Release', '--no-build']);
