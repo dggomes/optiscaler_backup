@@ -72,6 +72,9 @@ public sealed class ComponentFingerprints
         { throw new IOException("Invalid component catalog; recognition kept its last usable catalog.", error); }
         return new(document, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
     }
+    public List<ComponentFingerprint> Match(string hash, long size) => hashes.TryGetValue(hash.ToLowerInvariant(), out var matches)
+        ? matches.Where(match => match.Size == size).ToList() : [];
+
     public BackupComponents Identify(Store store, Snapshot snapshot)
     {
         var warnings = new List<string>(); var coverage = "Recorded backup files only";
@@ -79,11 +82,8 @@ public sealed class ComponentFingerprints
         var recorded = new HashSet<string>();
         void Analyze(Target target, string hash, long size, bool bytes)
         {
-            if (hashes.TryGetValue(hash.ToLowerInvariant(), out var matches))
-            {
-                var exact = matches.Where(m => m.Size == size).ToList();
-                if (exact.Count > 0) { identified.Add(new(target, hash, bytes, exact)); return; }
-            }
+            var exact = Match(hash, size);
+            if (exact.Count > 0) { identified.Add(new(target, hash, bytes, exact)); return; }
             var name = Path.GetFileName(target.Path);
             if (!new[] { ".dll", ".asi" }.Contains(Path.GetExtension(name), StringComparer.OrdinalIgnoreCase)) return;
             var component = name.Contains("optipatcher", StringComparison.OrdinalIgnoreCase) ? "OptiPatcher"

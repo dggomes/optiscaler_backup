@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- On-demand game-card hover inspection of current OptiScaler, OptiPatcher and FSR files using historical SHA-256/size matches. XeSS/XeFG, DLSS and unmatched DLL versions can be shown from file metadata, explicitly labelled as not hash-verified.
+- Hover details show available game resolution, upscaling and frame-generation preferences separately from OptiScaler INI preferences. File presence and saved settings do not establish runtime activation; unavailable installations are never inferred from older backups, and system GPU drivers are not inspected.
+- Background hover reads make no network requests, cache results for 30 seconds, cancel when the tooltip closes and invalidate after app file operations. Offline folders, read errors and unknown versions are surfaced.
+
 ### Changed
 
 - Consolidate the library into one header with compact tools for less frequent actions, keeping scanning, adding games and Playnite import easy to find.
@@ -13,7 +19,7 @@
 - Give backup comparison more room for file paths by hiding hash columns until Show hashes is selected; explain empty filtered results.
 - Use a single Close action in read-only dialogs and arrange Playnite's platform/tag/category filters side by side.
 
-Native Windows checks cover minimum-size layouts, menu rendering and dropdown accessibility selection. Manual high-DPI, screen-reader and gaming-PC acceptance remain pending.
+Native Windows checks cover minimum-size layouts, menu rendering, dropdown accessibility selection and the current-file tooltip. Service tests cover live edits, exact matches versus metadata, approved settings and offline/linked/locked/bounded reads. Manual high-DPI, screen-reader and gaming-PC acceptance remain pending.
 
 ## [0.3.5] — 2026-10-31
 

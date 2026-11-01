@@ -83,7 +83,7 @@ public partial class MainWindow
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(40) };
             fingerprints = await Fingerprints.Refresh(client, store.Home, scanningCancellation.Token);
-            componentReports.Clear();
+            componentReports.Clear(); ClearHoverDetails();
             StatusText.Text = $"Recognition catalog · {fingerprints.Document.Records.Count} historical fingerprints";
             if (page == Page.Game && !busy) RefreshDetails();
         }

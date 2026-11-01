@@ -46,6 +46,16 @@ Steam downloads request `library_600x900.jpg` portraits first. Available from v0
 
 The library uses one masthead and one filter/search row. **Scan games** is the primary action; **Add game** and **Playnite…** remain beside it. **More library actions** opens **Scan a folder…** or **Library settings / excluded games**. Launcher and folder scans run in the background while the app remains usable; their catalog merge waits for an active file operation to finish. Library, game and settings are separate pages; changing the library search does not discard the current game.
 
+## Current-file hover inspection — unreleased
+
+Hover a library card to open a native tooltip with **Current game files**, a local check time, component versions and separate game graphics/OptiScaler preference summaries. Its content scrolls within 520 pixels. This addition has no release bump. Service tests cover live edits, metadata labels, offline/linked/locked files and read bounds; Windows CI also checks the actual tooltip binding/render. Manual gaming-PC acceptance remains pending.
+
+The inspector combines recognized/detected game-local files with already managed paths. Supported game-local INIs can be read without adding them to management; external INIs require existing managed-path approval. No file selection or catalog state is changed. Available historical OptiScaler/FSR/OptiPatcher fingerprints provide exact SHA-256 plus size matches, including renamed managed files. Other detected DLLs/ASIs, such as XeSS, XeFG and DLSS families, use FileVersion/ProductVersion evidence labeled **DLL metadata only; not hash-verified**, or **Unknown version** when unavailable. These labels do not identify a runtime-active component or inspect system GPU drivers.
+
+Work starts only on hover, runs off the UI thread and is cancellable when the tooltip closes or another card is inspected. Only one inspection runs at a time; active file work asks the user to wait. Results are cached for 30 seconds and invalidated after file operations, scans or recognition-catalog refresh. Hover itself makes no network request. If the game folder is unavailable, it does not borrow installed versions or settings from backups.
+
+Discovery is limited to 50,000 files, inspection to 128 binary candidates, each at most 256 MiB and at most 512 MiB hashed overall, and settings to 64 supported INIs. Limit/access warnings can indicate incomplete results. The tooltip summarizes up to 12 component rows and eight distinct preference values per scope; use **Files → Current settings…** for the detailed approved-current settings report. Saved preferences remain distinct from effective runtime settings.
+
 ## Playnite and exclusions — v0.3.5
 
 These features are not in v0.3.4. Install the [local Playnite bridge](../../docs/playnite.md#install-the-bridge), restart or refresh Playnite, then use the library's **Playnite…** action or **Settings → Playnite → Compare / import…**. **Choose export…** selects another JSON file. The comparison shows export time, totals, missing/scanned-only entries and three side-by-side labeled platform/tag/category filters, with exact names separated by `;`. Changing filters clears row selections. Select individual eligible installed entries or **Select all eligible**, then **Save filters / import selected**. With no selections it saves the path/filters only. Covers are local JPEG/PNG files deliberately exported by the bridge; importing never edits Playnite's database or game files. An unavailable installation or invalid cover produces a warning; other selected entries may already have been imported. Live Playnite 10-host acceptance is pending; future Playnite 11 compatibility is not claimed.
@@ -107,6 +117,7 @@ First opening a schema 1 catalog converts existing snapshots to schema 2 folders
 - `scanning.cs`: background discovery/file analysis, cancellation and deferred catalog merging.
 - `navigation.cs` / `game-actions.cs`: library/settings navigation, storage relocation and game backup/package workflows.
 - `game-artwork.cs`: cached-image decoding; the library supplies initials when no image is available.
+- `game-hover.cs`: on-demand cancellable current-file inspection, short-lived results and bounded native tooltip text.
 - `playnite.cs`: local export selection, comparison, filters and reviewed import.
 - `game-exclusions.cs`: reversible library exclusions and settings restoration.
 - `thumbnails.cs`: catalog-wide background download scheduling, progress, retry and opt-out; matching/cache integrity belongs to the Windows adapter service.

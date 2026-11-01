@@ -11,7 +11,7 @@ using OptiScalerBackup.Windows;
 
 namespace OptiScalerBackup.Desktop;
 
-public sealed record GameRow(string Id, string Name, string Detail, string Status, string Initials, System.Windows.Media.ImageSource? Artwork, bool HasOriginal, bool Offline, int Backups)
+public sealed record GameRow(string Id, string Name, string Detail, string Status, string Initials, System.Windows.Media.ImageSource? Artwork, bool HasOriginal, bool Offline, int Backups, GameHoverDetails Hover)
 {
     public string Badge => Offline ? "Offline" : HasOriginal ? "Original saved" : Backups > 0 ? $"{Backups} backup{(Backups == 1 ? "" : "s")}" : "No backup";
     public string Description => Name + "\n" + Detail + "\n" + Status + (HasOriginal ? " · Original saved" : "");
@@ -65,7 +65,7 @@ public partial class MainWindow : Window
             pageIndex = Math.Clamp(pageIndex, 0, Math.Max(0, (games.Count - 1) / PageSize));
             var rows = games.Skip(pageIndex * PageSize).Take(PageSize).Select(g => new GameRow(g.Id, g.Name,
                 string.Join(" · ", g.Sources), !Directory.Exists(g.Directory) ? "Drive unavailable" : HasBackup(g) ? CountLabel(g.Snapshots.Count(s => !s.Recovery), "saved backup") : "No backup yet",
-                Initials(g.Name), artwork.GetValueOrDefault(g.Id), g.Snapshots.Any(s => s.Original), !Directory.Exists(g.Directory), g.Snapshots.Count(s => !s.Recovery))).ToList();
+                Initials(g.Name), artwork.GetValueOrDefault(g.Id), g.Snapshots.Any(s => s.Original), !Directory.Exists(g.Directory), g.Snapshots.Count(s => !s.Recovery), HoverFor(g))).ToList();
             GameList.ItemsSource = rows; GameList.SelectedItem = rows.FirstOrDefault(g => g.Id == selectedId);
             LibraryCount.Text = $"{store.VisibleGames.Count()} games in library · {totalMatches} matching";
             PageCount.Text = $"{pageIndex + 1} / {Math.Max(1, (games.Count + PageSize - 1) / PageSize)}";
@@ -210,6 +210,7 @@ public partial class MainWindow : Window
     private static string Physical(Game game, Target target) => Path.GetFullPath(Path.Combine(target.Root == "game" ? game.Directory : game.ExternalRoots[target.Root], target.Path));
     private void BeginWork(string operation)
     {
+        ClearHoverDetails();
         if (busy) throw new InvalidOperationException("Wait for the current operation to finish.");
         busy = true; SetWorkspaceEnabled(false); BusyProgress.Visibility = Visibility.Visible; StatusText.Text = operation + "…";
     }
@@ -223,14 +224,18 @@ public partial class MainWindow : Window
     private async Task<T> Work<T>(string operation, Func<T> action)
     {
         BeginWork(operation);
-        try { var value = await Task.Run(action); StatusText.Text = operation + " complete."; return value; }
+        try
+        {
+            await hoverGate.WaitAsync(scanningCancellation.Token); hoverGate.Release();
+            var value = await Task.Run(action); StatusText.Text = operation + " complete."; return value;
+        }
         finally { EndWork(); }
     }
     private Task Work(string operation, Action action) => Work(operation, () => { action(); return true; });
     private async Task WorkAsync(string operation, Func<Task> action)
     {
         BeginWork(operation);
-        try { await action(); StatusText.Text = operation + " complete."; }
+        try { await hoverGate.WaitAsync(scanningCancellation.Token); hoverGate.Release(); await action(); StatusText.Text = operation + " complete."; }
         finally { EndWork(); }
     }
     private async Task Guard(string operation, Func<Task> action)
@@ -275,6 +280,18 @@ public partial class MainWindow : Window
         if ((count > 0 ? GameList.ActualHeight : EmptyState.ActualHeight) < 460) throw new InvalidOperationException("Library header leaves too little room for game cards.");
         if (count >= 7) CheckLibraryDensity();
         if (count == 0) return;
+        var hoverRow = (GameRow)GameList.Items[0]; await InspectHover(hoverRow);
+        if (busy || !Workspace.IsEnabled || !hoverRow.Hover.Text.Contains("Current game files")) throw new InvalidOperationException("Hover inspection blocks the app or failed.");
+        if (store.Game(hoverRow.Id).Managed.Count >= 54 && (!hoverRow.Hover.Text.Contains("4.1.2.4555") || !hoverRow.Hover.Text.Contains("OptiPatcher") || !hoverRow.Hover.Text.Contains("XeSS frame generation")))
+            throw new InvalidOperationException("Hover inspection missed live fixture components or OptiScaler preferences: " + hoverRow.Hover.Text);
+        var card = (ListBoxItem)GameList.ItemContainerGenerator.ContainerFromIndex(0);
+        var tooltipTarget = FindTooltip(card) ?? throw new InvalidOperationException("Game card tooltip unavailable.");
+        var tooltip = (ToolTip)tooltipTarget.ToolTip; tooltip.PlacementTarget = tooltipTarget; tooltip.IsOpen = true;
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        var tooltipBody = (FrameworkElement)tooltip.Content; tooltipBody.UpdateLayout();
+        var tooltipText = ((ScrollViewer)tooltipBody).Content as TextBlock;
+        if (tooltipText?.Text != hoverRow.Hover.Text) throw new InvalidOperationException("Tooltip binding did not display the inspection report.");
+        SaveImage(tooltipBody, screenshot + ".hover.png"); tooltip.IsOpen = false;
         if (count > PageSize)
         {
             pageIndex = 1; Refresh();
@@ -405,6 +422,14 @@ public partial class MainWindow : Window
             if (SaveBackupButton.IsEnabled || ImportPackageButton.IsEnabled || ReviewFilesButton.IsEnabled) throw new InvalidOperationException("Offline mutation actions enabled.");
             await Capture(screenshot + ".offline.png");
         }
+    }
+
+    private static FrameworkElement? FindTooltip(DependencyObject parent)
+    {
+        if (parent is FrameworkElement { ToolTip: System.Windows.Controls.ToolTip } element) return element;
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            if (FindTooltip(System.Windows.Media.VisualTreeHelper.GetChild(parent, i)) is { } result) return result;
+        return null;
     }
 
     private void CheckLibraryDensity()

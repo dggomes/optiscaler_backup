@@ -29,11 +29,13 @@ public static class Detection
         .Where(p => !new[] { "unins", "setup", "crash", "reporter" }.Any(s => Path.GetFileName(p).Contains(s, StringComparison.OrdinalIgnoreCase)))
         .Select(p => Path.GetRelativePath(root, p).Replace('\\', '/')).Order(StringComparer.OrdinalIgnoreCase).ToList();
 
-    public static List<DetectedFile> Files(Game game, Action<string>? warning = null)
+    public static List<DetectedFile> Files(Game game, Action<string>? warning = null, CancellationToken cancellation = default, int maxFiles = int.MaxValue)
     {
-        var found = new List<DetectedFile>();
-        foreach (var path in SafePaths.Walk(game.Directory, warning))
+        var found = new List<DetectedFile>(); var inspected = 0;
+        foreach (var path in SafePaths.Walk(game.Directory, warning, cancellation: cancellation))
         {
+            cancellation.ThrowIfCancellationRequested();
+            if (++inspected > maxFiles) { warning?.Invoke("File discovery limit reached; results may be incomplete."); break; }
             var name = Path.GetFileName(path);
             var relative = Path.GetRelativePath(game.Directory, path).Replace('\\', '/');
             if (Libraries.Contains(name)) found.Add(new(relative, name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? "graphics-library" : "mod-config", "Known filename", false));
