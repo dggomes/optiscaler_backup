@@ -104,7 +104,7 @@ def pixels(data):
 
 def canonical(name, data):
     if name.endswith('.svg'):
-        return data
+        return data.replace(b'\r\n', b'\n')
     if name.endswith('.png'):
         return pixels(data)
     if struct.unpack_from('<HHH', data) != (0, 1, len(SIZES)):
