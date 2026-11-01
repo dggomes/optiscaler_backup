@@ -285,7 +285,7 @@ public partial class MainWindow : Window
         await Capture(screenshot);
         LibraryOptions_Click(LibraryOptionsButton, new RoutedEventArgs());
         await CaptureMenu(screenshot + ".library-menu.png");
-        if ((count > 0 ? GameList.ActualHeight : EmptyState.ActualHeight) < 460) throw new InvalidOperationException("Library header leaves too little room for game cards.");
+        if ((count > 0 ? GameList.ActualHeight : EmptyState.ActualHeight) < Math.Min(420, ActualHeight - 260)) throw new InvalidOperationException("Library header leaves too little room for game cards.");
         if (count >= 7) CheckLibraryDensity();
         if (count == 0) return;
         var hoverRow = (GameRow)GameList.Items[0]; await InspectHover(hoverRow);

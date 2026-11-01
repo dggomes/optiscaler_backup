@@ -53,7 +53,11 @@ internal static class WindowChrome
         window.MinWidth = Math.Min(window.MinWidth, work.Width / scale);
         window.MinHeight = Math.Min(window.MinHeight, work.Height / scale);
         if (window.WindowState != WindowState.Normal) return; // Native maximization respects the work area.
-        var bounds = FitBounds(new Rect(current.Left, current.Top, current.Right - current.Left, current.Bottom - current.Top), work, initial);
+        var requested = new Rect(current.Left, current.Top, current.Right - current.Left, current.Bottom - current.Top);
+        if (initial && window.Owner is { } parent && GetWindowRect(new WindowInteropHelper(parent).Handle, out var parentBounds))
+            requested.Location = new Point(parentBounds.Left + (parentBounds.Right - parentBounds.Left - requested.Width) / 2,
+                parentBounds.Top + (parentBounds.Bottom - parentBounds.Top - requested.Height) / 2);
+        var bounds = FitBounds(requested, work, initial && window.Owner == null);
         if (!SetWindowPos(handle, IntPtr.Zero, (int)bounds.X, (int)bounds.Y, (int)bounds.Width, (int)bounds.Height, 0x0014))
             Trace.WriteLine("Cannot fit window to monitor work area: " + Marshal.GetLastWin32Error());
     }
