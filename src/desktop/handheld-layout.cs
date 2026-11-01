@@ -61,7 +61,7 @@ public partial class MainWindow
         if (Grid.GetRow(TopActions) != 1 || Grid.GetRow(LibrarySearch) != 1)
             throw new InvalidOperationException("Narrow library actions did not reflow.");
         page = Page.Settings; Refresh(); await Capture(screenshot + ".handheld-settings.png");
-        if (Grid.GetRow(SettingsSecondary) != 1) throw new InvalidOperationException("Handheld settings did not stack.");
+        if (Grid.GetRow(SettingsSecondary) != 1 || ((ScrollViewer)Workspace.Parent).ScrollableWidth > 0) throw new InvalidOperationException("Handheld settings did not stack.");
         var dialog = new NameDialog(this, "Save backup", "Handheld", offerOriginal: true);
         dialog.Width = 720; dialog.Height = 420;
         await RenderDialog(dialog, screenshot + ".handheld-original.png");

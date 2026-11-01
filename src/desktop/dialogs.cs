@@ -88,7 +88,7 @@ internal sealed class NameDialog : ReviewDialog
     public bool Original { get; private set; }
     public NameDialog(Window owner, string title, string value = "", bool offerOriginal = false, bool preferOriginal = false) : base(owner, title, "Use a name you will recognize when returning to this version.", "Save")
     {
-        Body.MinHeight = offerOriginal ? 250 : 100;
+        Body.MinHeight = offerOriginal ? 200 : 100;
         Width = 680; MinWidth = 620; Height = offerOriginal ? 460 : 300; MinHeight = offerOriginal ? 340 : 260;
         var panel = new StackPanel(); name = new() { Text = value, MaxLength = 160 };
         panel.Children.Add(new TextBlock { Text = "Name", Margin = new Thickness(0, 0, 0, 7) }); panel.Children.Add(name);

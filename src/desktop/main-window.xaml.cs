@@ -46,7 +46,7 @@ public partial class MainWindow : Window
         InitializeComponent(); WindowChrome.Apply(this);
         var workspaceParent = (Grid)Workspace.Parent;
         workspaceParent.Children.Remove(Workspace);
-        var viewport = WindowChrome.Viewport(Workspace, 620, 340);
+        var viewport = WindowChrome.Viewport(Workspace, 580, 340);
         Grid.SetRow(viewport, 2); workspaceParent.Children.Add(viewport);
         SizeChanged += (_, _) => AdaptLayout();
         Refresh();
