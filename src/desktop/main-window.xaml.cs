@@ -282,7 +282,7 @@ public partial class MainWindow : Window
         if (count == 0) return;
         var hoverRow = (GameRow)GameList.Items[0]; await InspectHover(hoverRow);
         if (busy || !Workspace.IsEnabled || !hoverRow.Hover.Text.Contains("Current game files")) throw new InvalidOperationException("Hover inspection blocks the app or failed.");
-        if (store.Game(hoverRow.Id).Managed.Count >= 54 && (!hoverRow.Hover.Text.Contains("4.1.2.4555") || !hoverRow.Hover.Text.Contains("OptiPatcher") || !hoverRow.Hover.Text.Contains("XeSS frame generation")))
+        if (store.Game(hoverRow.Id).Managed.Count >= 54 && (!hoverRow.Hover.Text.Contains("4.1.2.4555") || !hoverRow.Hover.Text.Contains("OptiPatcher") || !hoverRow.Hover.Text.Contains("OptiScaler FG output: FSR frame generation") || hoverRow.Hover.Text.Contains("OptiScaler FG output: XeSS frame generation")))
             throw new InvalidOperationException("Hover inspection missed live fixture components or OptiScaler preferences: " + hoverRow.Hover.Text);
         var card = (ListBoxItem)GameList.ItemContainerGenerator.ContainerFromIndex(0);
         var tooltipTarget = FindTooltip(card) ?? throw new InvalidOperationException("Game card tooltip unavailable.");

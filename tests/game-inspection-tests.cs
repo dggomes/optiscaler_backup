@@ -56,9 +56,11 @@ internal static class GameInspectionTests
         var report = GameInspector.Read(fixture.Game, ComponentFingerprints.Bundled());
         var component = report.Components.Single();
         Check(component.Component == "XeSS FG (XeFG)" && component.Version == expected && component.Evidence.Contains("metadata only"), "Version resources were confused with hash-verified identity.");
-        var external = fixture.Path("approved"); Directory.CreateDirectory(external);
+        var external = Path.Combine(fixture.Root, "approved"); Directory.CreateDirectory(external);
         File.WriteAllText(Path.Combine(external, "Engine.ini"), "[SystemSettings]\nr.XeFG.Enabled=true");
         fixture.Game.ExternalRoots["settings"] = external; fixture.Game.Managed.Add(new("settings", "Engine.ini"));
+        File.Copy(binary, Path.Combine(external, "libxess_fg.dll")); fixture.Game.Managed.Add(new("settings", "libxess_fg.dll"));
+        Check(GameInspector.Read(fixture.Game, ComponentFingerprints.Bundled()).Components.Count == 1, "Inspection read binaries outside the game root.");
         var settings = GameInspector.Read(fixture.Game, ComponentFingerprints.Bundled()).Settings;
         Check(settings.Observations.Any(value => value.File == "settings:Engine.ini" && value.Value == "On"), "Approved external settings were not included.");
         fixture.Game.Managed.Add(new("unapproved", "Engine.ini"));

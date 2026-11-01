@@ -59,6 +59,9 @@ public partial class MainWindow
         { Trace.WriteLine("Game hover " + row.Id + ": " + error.Message); row.Hover.Text = row.Description + "\n\nCurrent inspection unavailable: " + error.Message; }
         finally { if (entered) hoverGate.Release(); if (ReferenceEquals(hoverCancellation, source)) hoverCancellation = null; }
     }
+    private static int SettingPriority(string setting) => setting.Contains("upscal", StringComparison.OrdinalIgnoreCase) || setting.Contains("frame gen", StringComparison.OrdinalIgnoreCase)
+        || setting.Contains("framegen", StringComparison.OrdinalIgnoreCase) || setting.StartsWith("OptiScaler FG", StringComparison.Ordinal) ? 0
+        : setting is "Resolution width" or "Resolution height" or "FSR quality preference" ? 1 : 2;
     private static string HoverText(string name, GameInspection report)
     {
         var text = new StringBuilder(name).Append("\nCurrent game files · checked ").Append(report.CheckedUtc.LocalDateTime.ToString("T"));
@@ -71,7 +74,7 @@ public partial class MainWindow
         foreach (var scope in new[] { "Game", "OptiScaler" })
         {
             text.Append("\n\n").Append(scope == "Game" ? "Game graphics preferences" : "OptiScaler preferences");
-            var values = report.Settings.Observations.Where(value => value.Scope == scope).Select(value => value.Setting + ": " + value.Value).Distinct().ToList();
+            var values = report.Settings.Observations.Where(value => value.Scope == scope).OrderBy(value => SettingPriority(value.Setting)).Select(value => value.Setting + ": " + value.Value + (value.Layer == "Project default" ? " [project default]" : "")).Distinct().ToList();
             foreach (var value in values.Take(8)) text.Append('\n').Append(value.Length > 240 ? value[..240] + "…" : value);
             if (values.Count == 0) text.Append("\nNo readable supported settings found.");
             if (values.Count > 8) text.Append("\n… ").Append(values.Count - 8).Append(" more values; see Files → Current settings.");

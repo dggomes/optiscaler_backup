@@ -20,7 +20,7 @@ public static class GameInspector
             return new(DateTimeOffset.UtcNow, false, [], new([], []), ["Game folder unavailable; installed versions could not be checked."]);
         var detected = Detection.Files(game, warnings.Add, cancellation, maxFiles: 50_000);
         var targets = game.Managed.Concat(detected.Select(file => new Target("game", file.Path))).DistinctBy(target => target.Key).ToList();
-        var binaries = targets.Where(target => Path.GetExtension(target.Path).Equals(".dll", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(target.Path).Equals(".asi", StringComparison.OrdinalIgnoreCase)).ToList();
+        var binaries = targets.Where(target => target.Root == "game" && (Path.GetExtension(target.Path).Equals(".dll", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(target.Path).Equals(".asi", StringComparison.OrdinalIgnoreCase))).ToList();
         if (binaries.Count > 128) warnings.Add("Only the first 128 component candidates were inspected.");
         long total = 0;
         foreach (var target in binaries.Take(128))
