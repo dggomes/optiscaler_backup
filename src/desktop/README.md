@@ -46,7 +46,17 @@ Steam downloads request `library_600x900.jpg` portraits first. Available from v0
 - `Escape`: return from game/settings to the library.
 - `F5`: scan installed launchers.
 
-The library uses one masthead and one filter/search row. **Scan games** is the primary action; **Add game** and **Playnite…** remain beside it. **More library actions** opens **Scan a folder…** or **Library settings / excluded games**. Launcher and folder scans run in the background while the app remains usable; their catalog merge waits for an active file operation to finish. Library, game and settings are separate pages; changing the library search does not discard the current game.
+The library uses one masthead and a shared filter/search row; development small-screen layouts reflow those actions and search. **Scan games** is the primary action; **Add game** and **Playnite…** remain beside it. **More library actions** opens **Scan a folder…** or **Library settings / excluded games**. Launcher and folder scans run in the background while the app remains usable; their catalog merge waits for an active file operation to finish. Library, game and settings are separate pages; changing the library search does not discard the current game.
+
+## Small-screen and touch layout — unreleased
+
+The development interface fits normal windows and review dialogs to each monitor's usable work area, accounting for the taskbar and current DPI. It repeats fitting after startup, display/work-area changes and DPI changes, including moves between displays; owned dialogs initially use their owner's monitor. Native maximization remains Windows-managed. Small work areas can reduce the window minimum size rather than leave actions offscreen.
+
+Shared buttons, inputs, selection controls and table rows use 44-DIP touch targets/row heights; scrollbars are 20 DIP wide. Lists, tables and bounded workspace/dialog viewports support touch panning. The library preserves 112 × 168-pixel artwork; toolbars and search reflow when narrow, and settings switch from columns to stacked groups. Tables retain finite internal viewports while the outer workspace/body can scroll in either direction when available space is too small. Review headers and confirmation/Close actions remain outside the scrollable dialog body.
+
+Use **Backups → Current components…** for an explicit current-file inspection action without relying on pointer hover. Its evidence/coverage limits are the same as the current-file hover inspector below; it does not infer runtime enablement. Existing keyboard commands and native file/folder pickers remain available.
+
+No release version is assigned to these changes. Real Windows handheld and Xbox-mode touch acceptance remains a manual check, including display scaling, docking, taskbar/work-area changes, scrolling and reaching every confirmation. No physical hardware pass or gamepad navigation support is claimed; screen-reader acceptance also remains separate.
 
 ## Current-file hover inspection — v0.4.0
 
@@ -80,7 +90,7 @@ Available from v0.3.5: **Backups → Compare**. Choose **From backup** and **To 
 
 **Packages** reviews ZIP destinations/exclusions, imports named versions, previews installs and rolls back active installations. Package payloads remain deduplicated blobs; their pre-install/recovery backups are browsable snapshot folders. Overlapping layers require explicit approval and reverse rollback order; externally edited files require explicit override after recovery capture. The engine preserves these rules across both interfaces.
 
-**Game options ···** groups **Open game folder** and **Remove and exclude…**; opening the folder requires it to be available. Game pages hide the global app masthead in favor of a compact title, library breadcrumb, counts, path and Original reminder. The header stays above tabs that fill the remaining window height. Tables scroll internally; there is no whole-game-page scroll. Compact 30-pixel rows, controls and review dialogs keep more files visible while retaining the clean-Original confirmation.
+**Game options ···** groups **Open game folder** and **Remove and exclude…**; opening the folder requires it to be available. Game pages hide the global app masthead in favor of a compact title, library breadcrumb, counts, path and Original reminder. The header stays above tabs that fill the remaining workspace height. Tables scroll internally; the development small-screen layout also places the workspace in a bounded panning/scrolling viewport when it cannot fit. Shared rows and controls are enlarged to 44 DIP while retaining the clean-Original confirmation.
 
 Inventory capture and file mutations run off the UI thread, with mutations serialized. Active file work temporarily disables competing actions and prevents closing the window; background library scans remain separate and defer their merge when needed. Dialog values are captured on the UI thread before worker tasks use them, avoiding cross-thread dialog access. Errors are shown inline and can be dismissed. Startup recovery runs before normal work.
 
@@ -100,7 +110,7 @@ The bundled fingerprint metadata works offline. Settings has a separate **Histor
 
 **Settings → Change location…** confirms the source/destination, copies and verifies snapshots/blobs, then switches the configured location. Old copies are retained. Other controls open the backup folder, copy its path or open app data. **Open backups** from a game opens that game's snapshot collection when it exists; elsewhere it opens the configured payload folder.
 
-The v0.4.0 settings layout balances two columns: backup location, Playnite and excluded games on the left; thumbnails, application updates and component recognition on the right. Shared macOS-inspired control styling adds segmented library filters, rounded dropdown popups with selected-item checkmarks, softer inputs/buttons and accent focus halos without layout shifts. Rounded tooltips/context menus and quieter pressed feedback follow the same theme. These remain WPF controls with their keyboard and accessibility interfaces; file/folder pickers and the window frame remain native Windows controls. CI captures the styled dropdown and both options menus alongside the normal pages; this does not establish manual screen-reader or high-DPI acceptance.
+The v0.4.0 settings layout balances two columns: backup location, Playnite and excluded games on the left; thumbnails, application updates and component recognition on the right. The development layout stacks these groups when narrow. Shared macOS-inspired control styling adds segmented library filters, rounded dropdown popups with selected-item checkmarks, softer inputs/buttons and accent focus halos without layout shifts. Rounded tooltips/context menus and quieter pressed feedback follow the same theme. These remain WPF controls with their keyboard and accessibility interfaces; file/folder pickers and the window frame remain native Windows controls. CI captures the styled dropdown and both options menus alongside the normal pages; this does not establish manual screen-reader or high-DPI acceptance.
 
 **Download thumbnails automatically** is enabled by default; switch it off to stop future matching/download requests. Existing cached images remain available. **Refresh thumbnails** retries non-excluded catalog entries; valid explicitly imported Playnite covers are retained. Images live under `<home>/thumbnails`, separate from backup storage, with 4 MiB JPEG download limits and SHA-256 verification. Available from v0.3.5 additionally accepts explicitly imported JPEG/PNG covers, retries legacy lookup misses and reduces no-match caching to one day; successful Steam entries retain the 30-day window. Moving backup storage does not relocate this cache. The same preference is available through CLI `config set download-thumbnails false` after closing the desktop app.
 
@@ -124,13 +134,14 @@ The [shared SVG/PNG/ICO assets](../windows/assets/README.md) include ICO frames 
 - `navigation.cs` / `game-actions.cs`: library/settings navigation, storage relocation and game backup/package workflows.
 - `game-artwork.cs`: cached-image decoding; the library supplies initials when no image is available.
 - `game-hover.cs`: on-demand cancellable current-file inspection, short-lived results and bounded native tooltip text.
+- `handheld-layout.cs`: narrow-window toolbar/settings reflow, explicit current-component inspection and small-screen layout checks.
 - `playnite.cs`: local export selection, comparison, filters and reviewed import.
 - `game-exclusions.cs`: reversible library exclusions and settings restoration.
 - `thumbnails.cs`: catalog-wide background download scheduling, progress, retry and opt-out; matching/cache integrity belongs to the Windows adapter service.
 - `updates.cs`: shared daily/manual release checks, opt-out, release-note/target confirmation and staged update/restart.
 - `backup-insights.cs`: background fingerprint summaries, recognition-catalog refresh and read-only component/settings detail dialogs.
 - `backup-comparison.cs`: read-only From/To backup selection, direction swapping and change/path filters over core comparison results.
-- `theme.xaml` / `window-chrome.cs`: shared dark controls and native window styling.
+- `theme.xaml` / `window-chrome.cs`: shared dark/touch-sized controls, bounded panning viewports, native window styling and per-monitor work-area fitting.
 - `dialogs.cs`: managed-file batch selection, labels/Original confirmation, ZIP mappings and change/conflict previews.
 
 Backup formats, path validation and recoverable mutations belong to the core. Windows discovery/process checks belong to the Windows adapter project. The desktop layer invokes those services and collects explicit user choices.

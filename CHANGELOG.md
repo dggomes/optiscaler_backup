@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Tap-friendly Current components action for viewing current component and graphics-preference details without relying on hover.
+
+### Changed
+
+- Fit desktop and review windows to the active monitor's work area and DPI, including changes to display scaling, resolution or taskbar placement.
+- Adapt library headers/search, toolbars, Settings columns and dialog viewports to narrower windows, with scrolling where content needs more room.
+- Enlarge interactive targets to 44 device-independent pixels, increase table-row touch space, enable finger panning and widen scrollbars to 20 device-independent pixels.
+
+Handheld/touch validation is in progress. Physical handheld testing and manual high-DPI acceptance remain pending.
+
 ## [0.4.1] — 2026-11-01
 
 ### Added
