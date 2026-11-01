@@ -8,8 +8,11 @@
     <AssemblyName>optibackup-ui</AssemblyName>
     <RootNamespace>OptiScalerBackup.Desktop</RootNamespace>
     <StartupObject>OptiScalerBackup.Desktop.App</StartupObject>
+    <ApplicationIcon>../windows/assets/optibackup.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="../windows/assets/optibackup.ico" Link="assets/optibackup.ico" />
+    <Resource Include="../windows/assets/optibackup.png" Link="assets/optibackup.png" />
     <ProjectReference Include="../core/OptiScalerBackup.Core.csproj" />
     <ProjectReference Include="../windows/OptiScalerBackup.Windows.csproj" />
   </ItemGroup>

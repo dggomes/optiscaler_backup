@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>optibackup</AssemblyName></PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>optibackup</AssemblyName>
+    <ApplicationIcon>../windows/assets/optibackup.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../core/OptiScalerBackup.Core.csproj" />
     <ProjectReference Include="../windows/OptiScalerBackup.Windows.csproj" />

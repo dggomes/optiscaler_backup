@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.1] — 2026-11-01
+
+### Added
+
+- Shared lime/navy application icon depicting layered backups with a checkmark, embedded in both CLI and desktop Windows executables.
+- Consistent desktop branding in startup, main and review-window title bars/taskbar icons, plus the navigation rail.
+- Transparent nine-resolution ICO artwork from 16 to 256 px, with shared SVG/PNG assets and a deterministic Python standard-library renderer that validates decoded pixels.
+- Windows release checks for extracted executable icons and WPF loading of the shared multi-frame icon, including startup/health probes.
+
+Automated Windows gates verify embedded executable pixels, shared WPF frames and desktop branding before publication. Manual high-DPI, screen-reader and real gaming-PC acceptance remain pending.
+
 ## [0.4.0] — 2026-11-01
 
 ### Added

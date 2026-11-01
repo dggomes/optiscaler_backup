@@ -8,9 +8,7 @@
         <Border Background="{DynamicResource Rail}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
             <Grid x:Name="Navigation" Margin="8,14,8,12">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                <Border Height="44" Width="44" CornerRadius="10" Background="{DynamicResource Accent}" Margin="0,0,0,18" ToolTip="OptiScaler Backup">
-                    <Path Data="M 11,10 L 31,10 31,17 11,17 Z M 11,21 L 31,21 31,28 11,28 Z" Fill="#182615" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
+                <Image x:Name="AppBrand" Height="44" Width="44" Source="/optibackup-ui;component/assets/optibackup.png" Margin="0,0,0,18" ToolTip="OptiScaler Backup" AutomationProperties.Name="OptiScaler Backup icon" RenderOptions.BitmapScalingMode="HighQuality"/>
                 <StackPanel Grid.Row="1">
                     <ToggleButton x:Name="LibraryNav" Style="{StaticResource NavButton}" Content="&#xE80F;" IsChecked="True" Click="Library_Click" ToolTip="Game library (Ctrl+F)" AutomationProperties.Name="Game library"/>
                     <Button Style="{StaticResource IconButton}" Content="&#xE8B7;" Click="OpenBackups_Click" ToolTip="Open backup folders" AutomationProperties.Name="Open backups" Margin="0"/>

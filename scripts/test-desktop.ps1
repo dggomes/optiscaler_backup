@@ -2,6 +2,8 @@ param([Parameter(Mandatory=$true)][string]$Executable, [Parameter(Mandatory=$tru
 $ErrorActionPreference = 'Stop'
 $Executable = (Resolve-Path $Executable).Path
 $Cli = (Resolve-Path $Cli).Path
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test-app-icons.ps1') -Cli $Cli -Desktop $Executable
+if ($LASTEXITCODE -ne 0) { throw 'Published executable icon validation failed' }
 $testRoot = Join-Path (Get-Location) ('.context/desktop-' + [guid]::NewGuid().ToString('N'))
 $testData = Join-Path $testRoot 'data'
 $testGame = Join-Path $testRoot 'game'
