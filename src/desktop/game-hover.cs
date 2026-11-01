@@ -40,7 +40,7 @@ public partial class MainWindow
         await InspectHover(row);
     }
     private void GameHover_Closing(object sender, System.Windows.Controls.ToolTipEventArgs e) => hoverCancellation?.Cancel();
-    private async Task InspectHover(GameRow row)
+    private async Task<bool> InspectHover(GameRow row)
     {
         hoverCancellation?.Cancel();
         using var source = CancellationTokenSource.CreateLinkedTokenSource(scanningCancellation.Token); hoverCancellation = source;
@@ -53,13 +53,14 @@ public partial class MainWindow
             var catalog = Fingerprints;
             await hoverGate.WaitAsync(source.Token); entered = true;
             var report = await Task.Run(() => GameInspector.Read(game, catalog, source.Token), source.Token);
-            if (source.IsCancellationRequested) return;
+            if (source.IsCancellationRequested) return false;
             row.Hover.Text = HoverText(row.Name + "\n" + string.Join(" · ", new[] { row.Detail, row.Status }.Where(value => value.Length > 0)), report); row.Hover.CheckedUtc = report.CheckedUtc;
         }
-        catch (OperationCanceledException) when (source.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (source.IsCancellationRequested) { return false; }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or JsonException)
         { Trace.WriteLine("Game hover " + row.Id + ": " + error.Message); row.Hover.Text = row.Description + "\n\nCurrent inspection unavailable: " + error.Message; }
         finally { if (entered) hoverGate.Release(); if (ReferenceEquals(hoverCancellation, source)) hoverCancellation = null; }
+        return true;
     }
     private static int SettingPriority(string setting) => setting.Contains("upscal", StringComparison.OrdinalIgnoreCase) || setting.Contains("frame gen", StringComparison.OrdinalIgnoreCase)
         || setting.Contains("framegen", StringComparison.OrdinalIgnoreCase) || setting.StartsWith("OptiScaler FG", StringComparison.Ordinal) ? 0

@@ -1,6 +1,6 @@
 <Window x:Class="OptiScalerBackup.Desktop.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="OptiScaler Backup" Width="1360" Height="860" MinWidth="1040" MinHeight="700" WindowStartupLocation="CenterScreen"
+    Title="OptiScaler Backup" Width="1360" Height="860" MinWidth="720" MinHeight="420" WindowStartupLocation="CenterScreen"
     Background="{DynamicResource Canvas}" Foreground="{DynamicResource Ink}" FontFamily="{DynamicResource BodyFont}" FontSize="13"
     UseLayoutRounding="True" SnapsToDevicePixels="True" Closing="Window_Closing" PreviewKeyDown="Window_KeyDown">
     <Grid x:Name="Shell" Background="{DynamicResource Canvas}">
@@ -21,7 +21,7 @@
         </Border>
         <Grid Grid.Column="1" Margin="20,14,20,10" MaxWidth="1700">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <Grid x:Name="HeaderChrome" Margin="0,0,0,12">
+            <Grid x:Name="HeaderChrome" Margin="0,0,0,12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel><TextBlock x:Name="PageTitle" Text="Game library" FontFamily="{DynamicResource DisplayFont}" FontSize="24" FontWeight="SemiBold"/><TextBlock x:Name="PageDescription" FontSize="12" Text="Choose a game to manage backups and packages." Style="{StaticResource MutedText}" Margin="0,4,0,0"/></StackPanel>
                 <StackPanel x:Name="TopActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -40,14 +40,14 @@
             <Grid x:Name="Workspace" Grid.Row="2">
                 <Grid x:Name="LibraryPanel">
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <Grid Margin="0,0,0,12">
+                    <Grid x:Name="LibraryFilters" Margin="0,0,0,12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="310"/></Grid.ColumnDefinitions>
                         <Border Background="{DynamicResource Surface}" CornerRadius="8" Padding="3" BorderThickness="1" BorderBrush="{DynamicResource Line}" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <RadioButton x:Name="FilterAll" Style="{StaticResource Filter}" Content="All games" GroupName="Filter" Tag="all" IsChecked="True" Click="Filter_Click"/>
                             <RadioButton x:Name="FilterProtected" Style="{StaticResource Filter}" Content="With backups" GroupName="Filter" Tag="protected" Click="Filter_Click"/>
                             <RadioButton x:Name="FilterUnprotected" Style="{StaticResource Filter}" Content="No backups" GroupName="Filter" Tag="unprotected" Click="Filter_Click"/>
                         </StackPanel></Border>
-                        <Grid Grid.Column="1" VerticalAlignment="Top" Margin="0,1,0,0">
+                        <Grid x:Name="LibrarySearch" Grid.Column="1" VerticalAlignment="Top" Margin="0,1,0,0">
                             <TextBox x:Name="SearchBox" TextChanged="Search_Changed" Padding="34,7,34,7" AutomationProperties.Name="Search games" ToolTip="Search names across the entire library (Ctrl+F)"/>
                             <TextBlock FontFamily="{DynamicResource IconFont}" Text="&#xE721;" Foreground="{DynamicResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
                             <TextBlock x:Name="SearchHint" Text="Search games…" Foreground="{DynamicResource Muted}" Margin="37,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
@@ -63,7 +63,7 @@
                                 <WrapPanel><Button x:Name="EmptyPrimary" Content="Scan games" Style="{StaticResource Primary}" Click="EmptyAction_Click"/><Button x:Name="EmptySecondary" Content="Add a game folder" Click="AddGame_Click"/></WrapPanel>
                             </StackPanel>
                         </Border>
-                        <ListBox x:Name="GameList" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource Ink}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="Game_Selected" PreviewMouseLeftButtonUp="Game_Activated" KeyDown="Game_KeyDown" AutomationProperties.Name="Games" ToolTipOpening="GameHover_Opening" ToolTipClosing="GameHover_Closing" ContextMenuOpening="GameContextMenu_Opening"><ListBox.ContextMenu><ContextMenu/></ListBox.ContextMenu>
+                        <ListBox x:Name="GameList" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource Ink}" ScrollViewer.PanningMode="VerticalOnly" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="Game_Selected" PreviewMouseLeftButtonUp="Game_Activated" KeyDown="Game_KeyDown" AutomationProperties.Name="Games" ToolTipOpening="GameHover_Opening" ToolTipClosing="GameHover_Closing" ContextMenuOpening="GameContextMenu_Opening"><ListBox.ContextMenu><ContextMenu/></ListBox.ContextMenu>
                             <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
                             <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="AutomationProperties.Name" Value="{Binding Name}"/><Setter Property="AutomationProperties.HelpText" Value="{Binding Status}"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,10,10"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="CardFrame" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="7"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="CardFrame" Property="BorderBrush" Value="{DynamicResource Accent}"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="CardFrame" Property="BorderBrush" Value="#7C9568"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="CardFrame" Property="BorderBrush" Value="{DynamicResource Accent}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style></ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate><DataTemplate><Border Width="112" CornerRadius="6" Background="{DynamicResource Surface}" ClipToBounds="True" ToolTipService.ShowDuration="60000">
@@ -107,17 +107,17 @@
                     </Border>
                     <TabControl x:Name="GameTabs" Grid.Row="2">
                         <TabItem Header="Backups"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <DockPanel Margin="0,0,0,8"><CheckBox x:Name="ShowRecovery" Content="Show recovery backups" DockPanel.Dock="Right" VerticalAlignment="Center" Checked="RecoveryFilter_Changed" Unchecked="RecoveryFilter_Changed"/><WrapPanel><Button x:Name="RestoreButton" Content="Restore…" ToolTip="Preview changes before restoring the selected backup" Click="Restore_Click"/><Button x:Name="CompareBackupsButton" Content="Compare…" Click="CompareBackups_Click"/><Button x:Name="BackupInsightsButton" Content="Inspect…" ToolTip="View detected components, versions and saved graphics settings" Click="BackupInsights_Click"/><Button x:Name="ShowFilesButton" Content="Show files" Style="{StaticResource Quiet}" Click="ShowFiles_Click"/><Button x:Name="RenameBackupButton" Content="Rename" Style="{StaticResource Quiet}" Click="RenameSnapshot_Click"/></WrapPanel></DockPanel>
+                            <WrapPanel Margin="0,0,0,8"><CheckBox x:Name="ShowRecovery" Content="Show recovery backups" DockPanel.Dock="Right" VerticalAlignment="Center" Checked="RecoveryFilter_Changed" Unchecked="RecoveryFilter_Changed"/><WrapPanel><Button x:Name="RestoreButton" Content="Restore…" ToolTip="Preview changes before restoring the selected backup" Click="Restore_Click"/><Button x:Name="CompareBackupsButton" Content="Compare…" Click="CompareBackups_Click"/><Button Content="Current components…" Click="CurrentComponents_Click"/><Button x:Name="BackupInsightsButton" Content="Inspect…" ToolTip="View detected components, versions and saved graphics settings" Click="BackupInsights_Click"/><Button x:Name="ShowFilesButton" Content="Show files" Style="{StaticResource Quiet}" Click="ShowFiles_Click"/><Button x:Name="RenameBackupButton" Content="Rename" Style="{StaticResource Quiet}" Click="RenameSnapshot_Click"/></WrapPanel></WrapPanel>
                             <Border Grid.Row="1" Background="{DynamicResource Surface}" CornerRadius="9"><Grid><DataGrid x:Name="SnapshotList" SelectionChanged="ActionSelection_Changed" SelectionMode="Single" AutomationProperties.Name="Saved backups"><DataGrid.Columns><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Backup" Binding="{Binding Name}" Width="*"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Components / versions" Binding="{Binding Components}" Width="230"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Type" Binding="{Binding Kind}" Width="85"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Files" Binding="{Binding FileCount}" Width="60"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Size" Binding="{Binding Size}" Width="90"/><DataGridTextColumn ElementStyle="{StaticResource CellText}" Header="Saved" Binding="{Binding Created}" Width="150"/></DataGrid.Columns></DataGrid>
                                 <StackPanel x:Name="BackupsEmpty" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="430" Margin="25"><TextBlock Text="No saved backups yet" FontSize="22" FontFamily="{DynamicResource DisplayFont}"/><TextBlock x:Name="BackupEmptyDescription" Text="Save your current settings before making changes. Recovery backups can be shown with the checkbox above." Style="{StaticResource MutedText}" Margin="0,10,0,0"/></StackPanel>
                             </Grid></Border>
                         </Grid></TabItem>
                         <TabItem Header="Files"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="230"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <WrapPanel Margin="0,0,0,8">
                                 <TextBlock x:Name="ManagedCountText" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                <Grid Grid.Column="1"><TextBox x:Name="ManagedSearch" TextChanged="ManagedSearch_Changed" Padding="30,7,8,7" ToolTip="Filter filenames or folders" AutomationProperties.Name="Filter managed files"/><TextBlock Text="&#xE721;" FontFamily="{DynamicResource IconFont}" Foreground="{DynamicResource Muted}" Margin="9,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/><TextBlock x:Name="ManagedSearchHint" Text="Filter files…" Foreground="{DynamicResource Muted}" Margin="31,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/></Grid>
+                                <Grid Width="210" Grid.Column="1"><TextBox x:Name="ManagedSearch" TextChanged="ManagedSearch_Changed" Padding="30,7,8,7" ToolTip="Filter filenames or folders" AutomationProperties.Name="Filter managed files"/><TextBlock Text="&#xE721;" FontFamily="{DynamicResource IconFont}" Foreground="{DynamicResource Muted}" Margin="9,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/><TextBlock x:Name="ManagedSearchHint" Text="Filter files…" Foreground="{DynamicResource Muted}" Margin="31,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/></Grid>
                                 <Button Grid.Column="3" x:Name="CurrentSettingsButton" Content="Current settings…" Click="CurrentSettings_Click" Margin="12,0,0,0"/><Button Grid.Column="4" x:Name="ReviewFilesButton" Content="Review / add files…" Click="Detect_Click" Margin="12,0,0,0"/>
-                            </Grid>
+                            </WrapPanel>
                             <Border Grid.Row="1" Background="{DynamicResource Surface}" CornerRadius="6"><Grid><DataGrid x:Name="ManagedList" AutomationProperties.Name="Managed files"><DataGrid.Columns>
                                 <DataGridTextColumn ElementStyle="{StaticResource PathCellText}" Header="File name" Binding="{Binding Name}" Width="220"/>
                                 <DataGridTextColumn ElementStyle="{StaticResource PathCellText}" Header="Folder" Binding="{Binding Folder}" Width="*"/>
@@ -135,7 +135,7 @@
                 <ScrollViewer x:Name="SettingsPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto"><Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                     <TextBlock Text="Changes are saved automatically." Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,0,0,12"/>
-                    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid x:Name="SettingsColumns" Grid.Row="1"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <StackPanel>
                             <Border Background="{DynamicResource Surface}" CornerRadius="8" Padding="16"><StackPanel>
                                 <TextBlock Text="Backup location" FontSize="15" FontWeight="SemiBold"/><TextBlock x:Name="BackupLocationText" FontFamily="Consolas" FontSize="12" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,10,0,12"/>
@@ -156,7 +156,7 @@
                                 <TextBlock Text="Hidden during future scans. Restore a game here to keep using its existing backups and history." Style="{StaticResource MutedText}" FontSize="12" Margin="0,6,0,0"/>
                             </StackPanel></Border>
                         </StackPanel>
-                        <StackPanel Grid.Column="2">
+                        <StackPanel x:Name="SettingsSecondary" Grid.Column="2">
                             <Border Background="{DynamicResource Surface}" CornerRadius="8" Padding="16" Margin="0,0,0,12"><StackPanel>
                                 <TextBlock Text="Game thumbnails" FontSize="15" FontWeight="SemiBold"/>
                                 <CheckBox x:Name="DownloadThumbnailsToggle" Content="Download thumbnails automatically" Click="ThumbnailSetting_Click" Margin="0,12,0,10"/>

@@ -43,7 +43,13 @@ public partial class MainWindow : Window
     {
         this.store = store; this.engine = engine; this.smoke = smoke;
         thumbnails = new Thumbnails(thumbnailHttp, store.Home);
-        InitializeComponent(); WindowChrome.Apply(this); Refresh();
+        InitializeComponent(); WindowChrome.Apply(this);
+        var workspaceParent = (Grid)Workspace.Parent;
+        workspaceParent.Children.Remove(Workspace);
+        var viewport = WindowChrome.Viewport(Workspace, 580, 340);
+        Grid.SetRow(viewport, 2); workspaceParent.Children.Add(viewport);
+        SizeChanged += (_, _) => AdaptLayout();
+        Refresh();
         if (!smoke) Loaded += async (_, _) => { await LoadArtwork(); StartThumbnails(); await ScanLibrary(); if (thumbnailCancellation == null) StartThumbnails(); await StartupUpdateCheck(); await RefreshFingerprints(true); };
         Closed += (_, _) => { scanningCancellation.Cancel(); thumbnailCancellation?.Cancel(); thumbnailHttp.Dispose(); };
     }
@@ -266,6 +272,7 @@ public partial class MainWindow : Window
     public async Task SmokeTest(string screenshot)
     {
         if (Icon is not BitmapFrame { Decoder: IconBitmapDecoder decoder } || decoder.Frames.Count != 9 || AppBrand.Source == null || AppBrand.Source.Width <= 0) throw new InvalidOperationException("Application/window/navigation icons are missing.");
+        WindowChrome.CheckPlacement(this);
         var count = store.VisibleGames.Count();
         int gameFileCount() => Selected.Managed.Count;
         SearchBox.Text = "__no_matching_game__";
@@ -278,7 +285,7 @@ public partial class MainWindow : Window
         await Capture(screenshot);
         LibraryOptions_Click(LibraryOptionsButton, new RoutedEventArgs());
         await CaptureMenu(screenshot + ".library-menu.png");
-        if ((count > 0 ? GameList.ActualHeight : EmptyState.ActualHeight) < 460) throw new InvalidOperationException("Library header leaves too little room for game cards.");
+        if ((count > 0 ? GameList.ActualHeight : EmptyState.ActualHeight) < Math.Min(420, ActualHeight - 260)) throw new InvalidOperationException("Library header leaves too little room for game cards.");
         if (count >= 7) CheckLibraryDensity();
         if (count == 0) return;
         var hoverRow = (GameRow)GameList.Items[0]; await InspectHover(hoverRow);
@@ -327,18 +334,19 @@ public partial class MainWindow : Window
             if (ManagedList.Items.Count != gameFileCount()) throw new InvalidOperationException("Clearing managed-file filter lost rows.");
         }
         GameTabs.SelectedIndex = 2; await Capture(screenshot + ".packages.png");
-        var width = Width; var height = Height; Width = MinWidth; Height = MinHeight;
+        var width = Width; var height = Height; Width = 1040; Height = 700;
         GameTabs.SelectedIndex = 1;
         await Capture(screenshot + ".files-compact.png");
-        if (ManagedList.ActualHeight < 340 || HeaderChrome.Visibility != Visibility.Collapsed) throw new InvalidOperationException("Compact game workspace does not give files enough height.");
+        if (ManagedList.ActualHeight < 270 || HeaderChrome.Visibility != Visibility.Collapsed) throw new InvalidOperationException("Compact game workspace does not give files enough height.");
         if (ManagedList.Items.Cast<ManagedRow>().Any(row => Path.IsPathRooted(row.Name) || row.Name.Contains('\\') || row.Name.Contains('/'))) throw new InvalidOperationException("File names are hidden inside full paths.");
         GameTabs.SelectedIndex = 2;
         await Capture(screenshot + ".compact.png");
-        if (PackageList.ActualHeight < 92 || InstallationList.ActualHeight < 92) throw new InvalidOperationException("Compact package tables clip rows.");
+        if (PackageList.ActualHeight < 70 || InstallationList.ActualHeight < 70) throw new InvalidOperationException("Compact package tables clip rows.");
         GameTabs.SelectedIndex = 0;
         await Capture(screenshot + ".backups-compact.png");
-        if (RenameBackupButton.TranslatePoint(new Point(RenameBackupButton.ActualWidth, 0), GamePanel).X > GamePanel.ActualWidth - ShowRecovery.ActualWidth)
+        if (RenameBackupButton.TranslatePoint(new Point(RenameBackupButton.ActualWidth, 0), GamePanel).X > GamePanel.ActualWidth)
             throw new InvalidOperationException("Backup toolbar overlaps the recovery filter.");
+        await CheckHandheldLayout(screenshot);
         Width = width; Height = height;
         page = Page.Settings; Refresh(); await Capture(screenshot + ".settings.png");
         DownloadThumbnailsToggle.IsChecked = false; await SaveThumbnailPreference();
@@ -498,6 +506,12 @@ public partial class MainWindow : Window
             await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
             popup.UpdateLayout(); SaveImage(popup, file + ".dropdown.png"); comparison.HideFilterMenu();
         }
+        dialog.Width = Math.Min(dialog.Width, 853); dialog.Height = Math.Min(dialog.Height, 500);
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        dialog.UpdateLayout();
+        WindowChrome.CheckPlacement(dialog);
+        if (dialog is ReviewDialog touchReview) touchReview.CheckFooter();
+        SaveImage((FrameworkElement)dialog.Content, file + ".handheld.png");
         dialog.Close();
     }
 

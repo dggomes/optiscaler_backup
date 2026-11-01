@@ -11,12 +11,12 @@ namespace OptiScalerBackup.Desktop;
 
 internal abstract class ReviewDialog : Window
 {
-    protected Grid Body { get; } = new();
+    protected Grid Body { get; } = new() { MinHeight = 300 };
     protected readonly TextBlock Error = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 6) };
     protected Button ApproveButton { get; private set; } = null!;
     protected ReviewDialog(Window owner, string title, string description, string approve)
     {
-        Owner = owner; Title = title; Width = 880; Height = 600; MinWidth = 700; MinHeight = 470;
+        Owner = owner; Title = title; Width = 880; Height = 600; MinWidth = 620; MinHeight = 360;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; FontFamily = owner.FontFamily; FontSize = 13;
         Background = (Brush)owner.FindResource("Canvas"); Foreground = (Brush)owner.FindResource("Ink");
         Error.Foreground = (Brush)owner.FindResource("ErrorInk"); WindowChrome.Apply(this);
@@ -26,7 +26,7 @@ internal abstract class ReviewDialog : Window
         var header = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
         header.Children.Add(new TextBlock { Text = title, FontSize = 22, FontFamily = (FontFamily)owner.FindResource("DisplayFont"), FontWeight = FontWeights.SemiBold });
         header.Children.Add(new TextBlock { Text = description, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)owner.FindResource("Muted"), Margin = new Thickness(0, 6, 0, 0) });
-        root.Children.Add(header); Grid.SetRow(Body, 1); root.Children.Add(Body);
+        root.Children.Add(header); var bodyViewport = WindowChrome.Viewport(Body, 580, 0); Grid.SetRow(bodyViewport, 1); root.Children.Add(bodyViewport);
         Grid.SetRow(Error, 2); root.Children.Add(Error);
         var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         var readOnly = approve == "Close";
@@ -40,6 +40,13 @@ internal abstract class ReviewDialog : Window
         };
         footer.Children.Add(cancel); footer.Children.Add(accept); Grid.SetRow(footer, 3); root.Children.Add(footer);
         Content = new Border { Padding = new Thickness(18), Background = Background, Child = root };
+    }
+    internal void CheckFooter()
+    {
+        var content = (FrameworkElement)Content;
+        if (ApproveButton.Visibility == Visibility.Visible &&
+            (ApproveButton.ActualHeight < 44 || ApproveButton.TranslatePoint(new Point(0, ApproveButton.ActualHeight), content).Y > content.ActualHeight))
+            throw new InvalidOperationException("Dialog confirmation is outside its touch viewport.");
     }
     protected abstract void Approve();
     internal virtual void CheckInteraction() { }
@@ -67,7 +74,7 @@ internal abstract class ReviewDialog : Window
         box.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         box.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         box.SetBinding(System.Windows.Automation.AutomationProperties.NameProperty, new Binding(field));
-        return new DataGridTemplateColumn { Header = "Use", Width = 46, CellTemplate = new DataTemplate { VisualTree = box } };
+        return new DataGridTemplateColumn { Header = "Use", Width = 58, CellTemplate = new DataTemplate { VisualTree = box } };
     }
     protected static void Commit(DataGrid table) { table.CommitEdit(DataGridEditingUnit.Cell, true); table.CommitEdit(DataGridEditingUnit.Row, true); }
 }
@@ -81,7 +88,8 @@ internal sealed class NameDialog : ReviewDialog
     public bool Original { get; private set; }
     public NameDialog(Window owner, string title, string value = "", bool offerOriginal = false, bool preferOriginal = false) : base(owner, title, "Use a name you will recognize when returning to this version.", "Save")
     {
-        Width = 680; MinWidth = 620; Height = offerOriginal ? 360 : 280; MinHeight = offerOriginal ? 340 : 260;
+        Body.MinHeight = offerOriginal ? 200 : 100;
+        Width = 680; MinWidth = 620; Height = offerOriginal ? 460 : 300; MinHeight = offerOriginal ? 340 : 260;
         var panel = new StackPanel(); name = new() { Text = value, MaxLength = 160 };
         panel.Children.Add(new TextBlock { Text = "Name", Margin = new Thickness(0, 0, 0, 7) }); panel.Children.Add(name);
         if (offerOriginal) { panel.Children.Add(original); panel.Children.Add(clean); }
@@ -148,7 +156,7 @@ internal sealed class FileReviewDialog : ReviewDialog
         this.store = store; this.game = game;
         rows = new(game.Managed.Select(t => new SelectionRow { Path = t.Root == "game" ? t.Path : SafePaths.Resolve(game, t), Existing = t, Role = "Already managed", Evidence = "Included in future backups" }).Concat(candidates));
         Body.RowDefinitions.Add(new() { Height = GridLength.Auto }); Body.RowDefinitions.Add(new());
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+        var tools = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
         var add = new Button { Content = "Add files…" }; add.Click += (_, _) =>
         {
             var picker = new OpenFileDialog { Multiselect = true, Title = "Select additional settings or libraries", CheckFileExists = true };
