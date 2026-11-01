@@ -48,11 +48,13 @@ public partial class MainWindow
         var entered = false;
         try
         {
-            var game = Format.Clone(store.Game(row.Id)); var catalog = Fingerprints;
+            var current = store.Game(row.Id);
+            var game = new Game { Id = current.Id, Name = current.Name, Directory = current.Directory, Managed = [.. current.Managed], ExternalRoots = new(current.ExternalRoots) };
+            var catalog = Fingerprints;
             await hoverGate.WaitAsync(source.Token); entered = true;
             var report = await Task.Run(() => GameInspector.Read(game, catalog, source.Token), source.Token);
             if (source.IsCancellationRequested) return;
-            row.Hover.Text = HoverText(row.Description, report); row.Hover.CheckedUtc = report.CheckedUtc;
+            row.Hover.Text = HoverText(row.Name + "\n" + string.Join(" · ", new[] { row.Detail, row.Status }.Where(value => value.Length > 0)), report); row.Hover.CheckedUtc = report.CheckedUtc;
         }
         catch (OperationCanceledException) when (source.IsCancellationRequested) { }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or JsonException)
@@ -68,7 +70,7 @@ public partial class MainWindow
         if (!report.Available) return text.Append("\n\nGame folder unavailable. Installed versions were not inferred from backups.").ToString();
         text.Append("\n\nComponents on disk");
         foreach (var component in report.Components.Take(12))
-            text.Append('\n').Append(component.Component).Append(' ').Append(component.Version).Append(" · ").Append(component.Evidence).Append("\n  ").Append(component.Path);
+            text.Append('\n').Append(component.Component).Append(' ').Append(component.Version).Append(" · ").Append(component.Evidence);
         if (report.Components.Count == 0) text.Append("\nNo supported component files found.");
         if (report.Components.Count > 12) text.Append("\n… ").Append(report.Components.Count - 12).Append(" additional component files.");
         foreach (var scope in new[] { "Game", "OptiScaler" })

@@ -39,7 +39,14 @@ public static class GameInspector
             { warnings.Add(target.Path + ": " + error.Message); }
         }
         cancellation.ThrowIfCancellationRequested();
-        var approved = Format.Clone(game); approved.Managed = targets.Where(target => GameSettingsReader.IsSettings(target.Path)).Take(64).ToList();
+        var approved = new Game
+        {
+            Id = game.Id,
+            Name = game.Name,
+            Directory = game.Directory,
+            ExternalRoots = new(game.ExternalRoots),
+            Managed = targets.Where(target => GameSettingsReader.IsSettings(target.Path)).Take(64).ToList()
+        };
         if (targets.Count(target => GameSettingsReader.IsSettings(target.Path)) > 64) warnings.Add("Only the first 64 supported settings files were read.");
         var settings = GameSettingsReader.Current(approved, cancellation);
         return new(DateTimeOffset.UtcNow, true, components, settings, warnings.Distinct().Take(20).ToList());

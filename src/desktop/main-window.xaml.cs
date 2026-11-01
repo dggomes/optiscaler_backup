@@ -291,7 +291,7 @@ public partial class MainWindow : Window
         var tooltipBody = (FrameworkElement)tooltip.Content; tooltipBody.UpdateLayout();
         var tooltipText = ((ScrollViewer)tooltipBody).Content as TextBlock;
         if (tooltipText?.Text != hoverRow.Hover.Text) throw new InvalidOperationException("Tooltip binding did not display the inspection report.");
-        SaveImage(tooltipBody, screenshot + ".hover.png"); tooltip.IsOpen = false;
+        tooltip.UpdateLayout(); SaveImage(tooltip, screenshot + ".hover.png"); tooltip.IsOpen = false;
         if (count > PageSize)
         {
             pageIndex = 1; Refresh();
