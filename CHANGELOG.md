@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.0] — 2026-11-01
 
 ### Added
 
@@ -19,7 +19,7 @@
 - Give backup comparison more room for file paths by hiding hash columns until Show hashes is selected; explain empty filtered results.
 - Use a single Close action in read-only dialogs and arrange Playnite's platform/tag/category filters side by side.
 
-Native Windows checks cover minimum-size layouts, menu rendering, dropdown accessibility selection and the current-file tooltip. Service tests cover live edits, exact matches versus metadata, approved settings and offline/linked/locked/bounded reads. Manual high-DPI, screen-reader and gaming-PC acceptance remain pending.
+Feature-code validation passed in [Windows/Linux CI](https://github.com/dggomes/optiscaler_backup/actions/runs/41304265346): 75 Windows service tests and 73 Linux service tests with two Windows-only skips; local macOS validation also passed 73 with two skips. Native UI checks cover minimum-size layouts, menus, dropdown accessibility and the current-file tooltip; updater suites passed. Service coverage includes live edits, exact matches versus metadata, approved settings and offline/linked/locked/bounded reads. Version-bump CI and release publication gates remain pending. Manual high-DPI, screen-reader and gaming-PC acceptance remain pending.
 
 ## [0.3.5] — 2026-10-31
 
