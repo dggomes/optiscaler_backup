@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.0] — 2026-11-01
+
+### Added
+
+- On-demand game-card hover inspection of current OptiScaler, OptiPatcher and FSR files using historical SHA-256/size matches. XeSS/XeFG, DLSS and unmatched DLL versions can be shown from file metadata, explicitly labelled as not hash-verified.
+- Hover details show available game resolution, upscaling and frame-generation preferences separately from OptiScaler INI preferences. File presence and saved settings do not establish runtime activation; unavailable installations are never inferred from older backups, and system GPU drivers are not inspected.
+- Background hover reads make no network requests, cache results for 30 seconds, cancel when the tooltip closes and invalidate after app file operations. Offline folders, read errors and unknown versions are surfaced.
+
+### Changed
+
+- Consolidate the library into one header with compact tools for less frequent actions, keeping scanning, adding games and Playnite import easy to find.
+- Preserve 112 × 168 portrait covers while adding backup/Original/offline badges, two-line game titles and fuller tooltips.
+- Group game-folder access and reversible exclusion under Game options; label backup component/settings details as Inspect.
+- Refine the dark theme, typography, dropdowns, keyboard focus and hover states, and balance the Settings panels.
+- Polish native WPF controls with segmented filters, rounded dropdown popups and selected-item checkmarks, softer text fields/buttons, and rounded menus/tooltips.
+- Add focus halos that keep control sizes stable, retaining WPF interaction semantics and Windows file/folder pickers.
+- Give backup comparison more room for file paths by hiding hash columns until Show hashes is selected; explain empty filtered results.
+- Use a single Close action in read-only dialogs and arrange Playnite's platform/tag/category filters side by side.
+
+Feature-code validation passed in [Windows/Linux CI](https://github.com/dggomes/optiscaler_backup/actions/runs/41304265346): 75 Windows service tests and 73 Linux service tests with two Windows-only skips; local macOS validation also passed 73 with two skips. Native UI checks cover minimum-size layouts, menus, dropdown accessibility and the current-file tooltip; updater suites passed. Service coverage includes live edits, exact matches versus metadata, approved settings and offline/linked/locked/bounded reads. Version-bump CI and release publication gates remain pending. Manual high-DPI, screen-reader and gaming-PC acceptance remain pending.
+
 ## [0.3.5] — 2026-10-31
 
 ### Added
@@ -22,7 +43,7 @@
 
 Backup comparison uses recorded file states and inventories without reading live game files. Coverage labels describe what was captured, not payload-integrity verification. Missing legacy/external metadata and excluded-link paths remain unknown rather than being reported as deletions.
 
-Backup-comparison unit and native UI validation are in progress. Automated service, CLI, native desktop, compiled bridge export and updater checks gate publication. Live Playnite-host and real gaming-PC acceptance remain pending.
+Automated service, CLI, native desktop, compiled bridge export and updater checks passed for 0.3.5 in [Windows/Linux CI](https://github.com/dggomes/optiscaler_backup/actions/runs/41201654651). Live Playnite-host and real gaming-PC acceptance remain pending.
 
 ## [0.3.4] — 2026-10-31
 

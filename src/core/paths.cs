@@ -84,19 +84,21 @@ public static class SafePaths
         return path;
     }
 
-    public static IEnumerable<string> Walk(string root, Action<string>? warning = null, int maxDepth = 12)
+    public static IEnumerable<string> Walk(string root, Action<string>? warning = null, int maxDepth = 12, CancellationToken cancellation = default)
     {
         if (!Directory.Exists(root)) yield break;
         var stack = new Stack<(string Path, int Depth)>();
         stack.Push((root, 0));
         while (stack.TryPop(out var item))
         {
+            cancellation.ThrowIfCancellationRequested();
             string[] entries;
             try { NoLinks(item.Path); entries = Directory.GetFileSystemEntries(item.Path); }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             { warning?.Invoke($"Cannot scan {item.Path}: {e.Message}"); continue; }
             foreach (var entry in entries)
             {
+                cancellation.ThrowIfCancellationRequested();
                 FileAttributes attrs;
                 try { attrs = File.GetAttributes(entry); }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)

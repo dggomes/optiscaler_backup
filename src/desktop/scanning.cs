@@ -42,7 +42,7 @@ public partial class MainWindow
         var results = pendingDiscovery; pendingDiscovery = null;
         try
         {
-            new Discovery(TraceWarning).Merge(store, results);
+            new Discovery(TraceWarning).Merge(store, results); ClearHoverDetails();
             Refresh(); StatusText.Text = $"Scan complete · {results.Count} installations found.";
             if (discoveryWarnings.Count > 0) ShowError(string.Join(" ", discoveryWarnings.Take(3)));
             _ = LoadArtwork(); StartThumbnails();

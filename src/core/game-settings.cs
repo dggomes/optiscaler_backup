@@ -50,12 +50,13 @@ public static partial class GameSettingsReader
         if (observations.Count == 0) warnings.Add("No readable supported graphics settings were captured. Inventory hashes cannot reconstruct missing INI contents.");
         return Finish(observations, warnings);
     }
-    public static GameSettingsReport Current(Game game)
+    public static GameSettingsReport Current(Game game, CancellationToken cancellation = default)
     {
         var observations = new List<SettingObservation>(); var warnings = new List<string>();
         // External roots are read only after the existing managed-file approval flow.
         foreach (var target in game.Managed.Where(t => IsSettings(t.Path)).Take(1000))
         {
+            cancellation.ThrowIfCancellationRequested();
             try
             {
                 var path = SafePaths.Resolve(game, target);

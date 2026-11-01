@@ -11,7 +11,11 @@ using OptiScalerBackup.Windows;
 
 namespace OptiScalerBackup.Desktop;
 
-public sealed record GameRow(string Id, string Name, string Detail, string Status, string Initials, System.Windows.Media.ImageSource? Artwork);
+public sealed record GameRow(string Id, string Name, string Detail, string Status, string Initials, System.Windows.Media.ImageSource? Artwork, bool HasOriginal, bool Offline, int Backups, GameHoverDetails Hover)
+{
+    public string Badge => Offline ? "Offline" : HasOriginal ? "Original saved" : Backups > 0 ? $"{Backups} backup{(Backups == 1 ? "" : "s")}" : "No backup";
+    public string Description => Name + "\n" + Detail + "\n" + Status + (HasOriginal ? " · Original saved" : "");
+}
 public sealed record SnapshotRow(string Id, string Name, string Kind, string Created, int FileCount, string Size, string Components);
 public sealed record InstallationRow(string Id, string Name, string Created);
 public sealed record ManagedRow(string Name, string Folder, string Path, string Location);
@@ -61,7 +65,7 @@ public partial class MainWindow : Window
             pageIndex = Math.Clamp(pageIndex, 0, Math.Max(0, (games.Count - 1) / PageSize));
             var rows = games.Skip(pageIndex * PageSize).Take(PageSize).Select(g => new GameRow(g.Id, g.Name,
                 string.Join(" · ", g.Sources), !Directory.Exists(g.Directory) ? "Drive unavailable" : HasBackup(g) ? CountLabel(g.Snapshots.Count(s => !s.Recovery), "saved backup") : "No backup yet",
-                Initials(g.Name), artwork.GetValueOrDefault(g.Id))).ToList();
+                Initials(g.Name), artwork.GetValueOrDefault(g.Id), g.Snapshots.Any(s => s.Original), !Directory.Exists(g.Directory), g.Snapshots.Count(s => !s.Recovery), HoverFor(g))).ToList();
             GameList.ItemsSource = rows; GameList.SelectedItem = rows.FirstOrDefault(g => g.Id == selectedId);
             LibraryCount.Text = $"{store.VisibleGames.Count()} games in library · {totalMatches} matching";
             PageCount.Text = $"{pageIndex + 1} / {Math.Max(1, (games.Count + PageSize - 1) / PageSize)}";
@@ -82,6 +86,8 @@ public partial class MainWindow : Window
             SettingsPanel.Visibility = page == Page.Settings ? Visibility.Visible : Visibility.Collapsed;
             LibraryNav.IsChecked = page != Page.Settings; SettingsNav.IsChecked = page == Page.Settings;
             TopActions.Visibility = page == Page.Library ? Visibility.Visible : Visibility.Collapsed;
+            PageTitle.Text = page == Page.Settings ? "Settings" : "Game library";
+            FooterVersion.Text = "v" + Releases.DisplayVersion.TrimStart('v');
             PageDescription.Text = page == Page.Library ? "Choose a game to manage its backups and packages." : page == Page.Settings ? "Storage and application preferences." : "Back up, change settings, and return to a working version.";
             ExcludedGamesList.ItemsSource = store.Data.Games.Where(g => g.Excluded).OrderBy(g => g.Name).ToList();
             ExcludedCountText.Text = $"{store.Data.Games.Count(g => g.Excluded)} excluded games · backups retained";
@@ -204,6 +210,7 @@ public partial class MainWindow : Window
     private static string Physical(Game game, Target target) => Path.GetFullPath(Path.Combine(target.Root == "game" ? game.Directory : game.ExternalRoots[target.Root], target.Path));
     private void BeginWork(string operation)
     {
+        ClearHoverDetails();
         if (busy) throw new InvalidOperationException("Wait for the current operation to finish.");
         busy = true; SetWorkspaceEnabled(false); BusyProgress.Visibility = Visibility.Visible; StatusText.Text = operation + "…";
     }
@@ -217,14 +224,18 @@ public partial class MainWindow : Window
     private async Task<T> Work<T>(string operation, Func<T> action)
     {
         BeginWork(operation);
-        try { var value = await Task.Run(action); StatusText.Text = operation + " complete."; return value; }
+        try
+        {
+            await hoverGate.WaitAsync(scanningCancellation.Token); hoverGate.Release();
+            var value = await Task.Run(action); StatusText.Text = operation + " complete."; return value;
+        }
         finally { EndWork(); }
     }
     private Task Work(string operation, Action action) => Work(operation, () => { action(); return true; });
     private async Task WorkAsync(string operation, Func<Task> action)
     {
         BeginWork(operation);
-        try { await action(); StatusText.Text = operation + " complete."; }
+        try { await hoverGate.WaitAsync(scanningCancellation.Token); hoverGate.Release(); await action(); StatusText.Text = operation + " complete."; }
         finally { EndWork(); }
     }
     private async Task Guard(string operation, Func<Task> action)
@@ -264,8 +275,23 @@ public partial class MainWindow : Window
             if (CachedThumbnail(store.Game(row.Id)) != null && row.Artwork == null) throw new InvalidOperationException("Cached thumbnail did not render.");
         if (GameList.Items.Count != Math.Min(count, PageSize)) throw new InvalidOperationException("Clearing search failed.");
         await Capture(screenshot);
+        LibraryOptions_Click(LibraryOptionsButton, new RoutedEventArgs());
+        await CaptureMenu(screenshot + ".library-menu.png");
+        if ((count > 0 ? GameList.ActualHeight : EmptyState.ActualHeight) < 460) throw new InvalidOperationException("Library header leaves too little room for game cards.");
         if (count >= 7) CheckLibraryDensity();
         if (count == 0) return;
+        var hoverRow = (GameRow)GameList.Items[0]; await InspectHover(hoverRow);
+        if (busy || !Workspace.IsEnabled || !hoverRow.Hover.Text.Contains("Current game files")) throw new InvalidOperationException("Hover inspection blocks the app or failed.");
+        if (store.Game(hoverRow.Id).Managed.Count >= 54 && (!hoverRow.Hover.Text.Contains("4.1.2.4555") || !hoverRow.Hover.Text.Contains("OptiPatcher") || !hoverRow.Hover.Text.Contains("OptiScaler FG output: FSR frame generation") || hoverRow.Hover.Text.Contains("OptiScaler FG output: XeSS frame generation")))
+            throw new InvalidOperationException("Hover inspection missed live fixture components or OptiScaler preferences: " + hoverRow.Hover.Text);
+        var card = (ListBoxItem)GameList.ItemContainerGenerator.ContainerFromIndex(0);
+        var tooltipTarget = FindTooltip(card) ?? throw new InvalidOperationException("Game card tooltip unavailable.");
+        var tooltip = (ToolTip)tooltipTarget.ToolTip; tooltip.PlacementTarget = tooltipTarget; tooltip.IsOpen = true;
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        var tooltipBody = (FrameworkElement)tooltip.Content; tooltipBody.UpdateLayout();
+        var tooltipText = ((ScrollViewer)tooltipBody).Content as TextBlock;
+        if (tooltipText?.Text != hoverRow.Hover.Text) throw new InvalidOperationException("Tooltip binding did not display the inspection report.");
+        tooltip.UpdateLayout(); SaveImage(tooltip, screenshot + ".hover.png"); tooltip.IsOpen = false;
         if (count > PageSize)
         {
             pageIndex = 1; Refresh();
@@ -288,6 +314,8 @@ public partial class MainWindow : Window
             if ((SnapshotList.SelectedItem as SnapshotRow)?.Id != id || !RestoreButton.IsEnabled) throw new InvalidOperationException("Refresh lost selection.");
         }
         await Capture(screenshot + ".game.png");
+        GameOptions_Click(RemoveGameButton, new RoutedEventArgs());
+        await CaptureMenu(screenshot + ".game-menu.png");
         CheckTabs();
         GameTabs.SelectedIndex = 1; await Capture(screenshot + ".managed.png");
         if (gameFileCount() >= 54)
@@ -306,6 +334,10 @@ public partial class MainWindow : Window
         GameTabs.SelectedIndex = 2;
         await Capture(screenshot + ".compact.png");
         if (PackageList.ActualHeight < 92 || InstallationList.ActualHeight < 92) throw new InvalidOperationException("Compact package tables clip rows.");
+        GameTabs.SelectedIndex = 0;
+        await Capture(screenshot + ".backups-compact.png");
+        if (RenameBackupButton.TranslatePoint(new Point(RenameBackupButton.ActualWidth, 0), GamePanel).X > GamePanel.ActualWidth - ShowRecovery.ActualWidth)
+            throw new InvalidOperationException("Backup toolbar overlaps the recovery filter.");
         Width = width; Height = height;
         page = Page.Settings; Refresh(); await Capture(screenshot + ".settings.png");
         DownloadThumbnailsToggle.IsChecked = false; await SaveThumbnailPreference();
@@ -392,6 +424,14 @@ public partial class MainWindow : Window
         }
     }
 
+    private static FrameworkElement? FindTooltip(DependencyObject parent)
+    {
+        if (parent is FrameworkElement { ToolTip: System.Windows.Controls.ToolTip } element) return element;
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            if (FindTooltip(System.Windows.Media.VisualTreeHelper.GetChild(parent, i)) is { } result) return result;
+        return null;
+    }
+
     private void CheckLibraryDensity()
     {
         var cards = Enumerable.Range(0, Math.Min(12, GameList.Items.Count)).Select(i => (ListBoxItem)GameList.ItemContainerGenerator.ContainerFromIndex(i)).ToList();
@@ -425,6 +465,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task CaptureMenu(string file)
+    {
+        var menu = optionsMenu ?? throw new InvalidOperationException("Options menu did not open.");
+        await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        menu.UpdateLayout();
+        if (!menu.IsOpen || menu.ActualWidth < 120 || menu.ActualHeight < 60) throw new InvalidOperationException("Options menu is clipped or unavailable.");
+        SaveImage(menu, file); menu.IsOpen = false;
+    }
+
     private async Task Capture(string file)
     {
         await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
@@ -441,6 +490,12 @@ public partial class MainWindow : Window
         await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
         dialog.UpdateLayout();
         SaveImage((FrameworkElement)dialog.Content, file);
+        if (dialog is BackupComparisonDialog comparison)
+        {
+            var popup = comparison.ShowFilterMenu();
+            await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            popup.UpdateLayout(); SaveImage(popup, file + ".dropdown.png"); comparison.HideFilterMenu();
+        }
         dialog.Close();
     }
 

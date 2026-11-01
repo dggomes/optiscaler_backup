@@ -101,7 +101,13 @@ r.Streamline.DLSSG.Enable=1
     $null = Invoke-Cli -CommandArgs @('packages','import',$game.Id,$testZip,'Graphics settings','1','--map',$map,'--yes')
     $package = ((Invoke-Cli -CommandArgs @('packages','list',$game.Id)) | ConvertFrom-Json).Packages[0]
     $null = Invoke-Cli -CommandArgs @('packages','install',$game.Id,$package.Id,'--yes')
-    'quality=custom' | Set-Content (Join-Path $testGame 'OptiScaler.ini')
+    @'
+[Upscalers]
+Dx12Upscaler=xess
+[FrameGen]
+Enabled=false
+FGOutput=fsrfg
+'@ | Set-Content (Join-Path $testGame 'OptiScaler.ini')
     foreach ($index in 1..75) {
         $folder = Join-Path $testRoot ('library/game-' + $index)
         New-Item -ItemType Directory -Path $folder -Force | Out-Null
