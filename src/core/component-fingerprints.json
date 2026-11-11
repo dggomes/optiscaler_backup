@@ -1138,6 +1138,22 @@
       "Channel": "stable"
     },
     {
+      "Component": "OptiPatcher",
+      "Role": "plugin",
+      "Version": "rolling",
+      "FileName": "OptiPatcher.asi",
+      "Sha256": "f0c2bcd6804429b19235abd6c6d0f7fc0841397e64ba833c948f14e6b878490e",
+      "Size": 119808,
+      "Source": "optiscaler/OptiPatcher",
+      "SourceRevision": "735375684:f0c2bcd6804429b19235abd6c6d0f7fc0841397e64ba833c948f14e6b878490e",
+      "ReleaseTag": "rolling",
+      "AssetId": "735375684",
+      "AssetUrl": "https://github.com/optiscaler/OptiPatcher/releases/download/rolling/OptiPatcher.asi",
+      "ArchiveSha256": "f0c2bcd6804429b19235abd6c6d0f7fc0841397e64ba833c948f14e6b878490e",
+      "ArchiveEntry": "OptiPatcher.asi",
+      "Channel": "stable"
+    },
+    {
       "Component": "OptiScaler",
       "Role": "library",
       "Version": "0.1",
